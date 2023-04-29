@@ -95,7 +95,7 @@ do
 	dataPackage=`echo $appPackage | sed 's/app_/data_/'`
 	echo "mkdir -p /dev/tmp/$dataDir"
 	$AS "mkdir -p /dev/tmp/$dataDir"
-	cat $dataPackage | pv -trab | $AS "/dev/busybox tar -xzpf - -C /data/data/$dataDir"
+	cat $dataPackage | pv -trab | $AS "$BUSYBOX tar -xzpf - -C /data/data/$dataDir"
 	echo "$AS chown -R $ID.$ID /data/data/$dataDir"
 	$AS "chown -R $ID.$ID /data/data/$dataDir"
 done

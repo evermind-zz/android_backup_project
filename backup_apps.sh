@@ -4,6 +4,11 @@
 # Tested/Fixed for Android O by marc_soft@merlins.org 2017/12
 # improved / completly reworked to play nice with Android 9 / 10 by anddisa@gmail.com 2019/12
 
+# set path for busybox if wanted
+if [[ "$1" == "--local" ]]; then
+    CUSTOM_BUSYBOX_TARGET_BIN=/tmp/busybox
+    shift;
+fi
 curr_dir="$(dirname "$0")"
 . "$curr_dir/functions.sh"
 
@@ -54,14 +59,14 @@ for APP in `echo $PACKAGES | tr " " "\n" | grep "${PATTERN}"`; do
 #
 # --- version for adb insecure
 #
-       		$AS "/dev/busybox tar -cv -C $appDir . 2>/dev/null | gzip" | gzip -d | pv -trabi 1 | gzip -c9 > app_${dataDir}.tar.gz
-       		$AS "/dev/busybox tar -cv -C /data/data/$dataDir . 2>/dev/null | gzip" | gzip -d | pv -trabi 1 | gzip -c9 > data_${dataDir}.tar.gz
+       		$AS "$BUSYBOX tar -cv -C $appDir . 2>/dev/null | gzip" | gzip -d | pv -trabi 1 | gzip -c9 > app_${dataDir}.tar.gz
+       		$AS "$BUSYBOX tar -cv -C /data/data/$dataDir . 2>/dev/null | gzip" | gzip -d | pv -trabi 1 | gzip -c9 > data_${dataDir}.tar.gz
 	else
 #
 # --- version for magisk rooted
 #
-		$AS "'cd $appDir && /dev/busybox tar czf - ./' 2>/dev/null" | pv -trabi 1 > app_${dataDir}.tar.gz
-		$AS "'cd /data/data/$dataDir && /dev/busybox tar czf - ./' 2>/dev/null" | pv -trabi 1 > data_${dataDir}.tar.gz
+		$AS "'cd $appDir && $BUSYBOX tar czf - ./' 2>/dev/null" | pv -trabi 1 > app_${dataDir}.tar.gz
+		$AS "'cd /data/data/$dataDir && $BUSYBOX tar czf - ./' 2>/dev/null" | pv -trabi 1 > data_${dataDir}.tar.gz
 	fi
 done
 

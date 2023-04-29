@@ -5,10 +5,11 @@ AMAGISK="adb shell su root "      # -- needed for magisk rooted devices
 AMAGISK2="adb shell su 0 -c "     # -- needed for magisk rooted devices (depends on su version installed)
 AMAGISK3="adb shell su -c "       # -- needed for magisk rooted devices (depends on su version installed)
 AROOT="adb shell "
+BUSYBOX="${CUSTOM_BUSYBOX_TARGET_BIN:-/dev/busybox}"
 
 function cleanup()
 {
-	$AS "rm /dev/busybox"
+	$AS "rm $BUSYBOX"
 }
 
 function checkForCleanData()
@@ -188,10 +189,10 @@ function pushBusybox()
 	echo "Pushing busybox to device..."
 
 	$A push busybox-ndk/busybox-$target_arch /sdcard/busybox
-	$AS "mv /sdcard/busybox /dev/busybox"
-	$AS "chmod +x /dev/busybox"
+	$AS "mv /sdcard/busybox $BUSYBOX"
+	$AS "chmod +x $BUSYBOX"
 
-	if ! $AS "/dev/busybox >/dev/null"; then
+	if ! $AS "$BUSYBOX >/dev/null"; then
 		echo "Busybox doesn't work here!"
 		exit 1
 	fi
