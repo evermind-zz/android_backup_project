@@ -21,6 +21,12 @@ SINGLE_APP=""
 DO_ONLY_MATCHING_APPS=false
 MATCHING_APPS=""
 DO_IT=true # for try run
+DO_ACTION_APK=true
+DO_ACTION_DATA=true
+DO_ACTION_EXT_DATA=true
+DO_ACTION_KEYSTORE=true
+DO_ACTION_PERMISSIONS=true
+
 
 argCount=${#@}
 while [ $argCount -gt 0 ] ; do
@@ -32,6 +38,21 @@ while [ $argCount -gt 0 ] ; do
     elif [[ "$1" == "--do-nothing" ]]; then
         shift; let argCount-=1
         DO_IT=false
+    elif [[ "$1" == "--no-apk" ]]; then
+        shift; let argCount-=1
+        DO_ACTION_APK=false
+    elif [[ "$1" == "--no-data" ]]; then
+        shift; let argCount-=1
+        DO_ACTION_DATA=false
+    elif [[ "$1" == "--no-ext-data" ]]; then
+        shift; let argCount-=1
+        DO_ACTION_EXT_DATA=false
+    elif [[ "$1" == "--no-keystore" ]]; then
+        shift; let argCount-=1
+        DO_ACTION_KEYSTORE=false
+    elif [[ "$1" == "--no-perms" ]]; then
+        shift; let argCount-=1
+        DO_ACTION_PERMISSIONS=false
     elif [[ "$1" == "--data-path" ]]; then
         #CUSTOM_BUSYBOX_TARGET_BIN=/tmp/busybox
         shift; let argCount-=1
@@ -278,21 +299,25 @@ for appSign in $APPS; do
         #####################
 
         appPackage="$appSign/app_${appSign}.tar.gz"
-        if test -e "$appPackage" ; then
+        if $DO_ACTION_APK ; then
+            if test -e "$appPackage" ; then
 
-	    APP=`tar xvfz $appPackage -C /tmp/ --wildcards "*.apk" | sed 's/\.\///'`
-            einfo "[$appSign]: restoring apk(s): $APP "
-	    edebug "[$appSign]: appPackage=$appPackage"
-	    edebug "[$appSign]: Installing: APP=$APP"
-	    if $DO_IT ; then
-                pushd /tmp &> /dev/null
-	        error=`$A install-multiple -r -t ${APP}`
-	        eerror "[$appSign]: error=$error"
-	        rm ${APP}
-	        popd &> /dev/null
+	        APP=`tar xvfz $appPackage -C /tmp/ --wildcards "*.apk" | sed 's/\.\///'`
+                einfo "[$appSign]: restoring apk(s): $APP "
+	        edebug "[$appSign]: appPackage=$appPackage"
+	        edebug "[$appSign]: Installing: APP=$APP"
+	        if $DO_IT ; then
+                    pushd /tmp &> /dev/null
+	            error=`$A install-multiple -r -t ${APP}`
+	            eerror "[$appSign]: error=$error"
+	            rm ${APP}
+	            popd &> /dev/null
+                fi
+            else
+                einfo "[$appSign]: NOT restoring apk(s) -- no backup file"
             fi
         else
-            einfo "[$appSign]: NOT restoring apk(s) -- no backup file"
+            einfo "[$appSign]: SKIP restoring apk(s) -- as requested via commandline"
         fi
 
 	$DO_IT && allApps=`$A shell cmd package list packages -f`
@@ -332,69 +357,77 @@ for appSign in $APPS; do
 	    exit 2
 	fi
 
-	einfo2 "[$appSign]: APP User id is $newUid"
+	einfo2 "[$appSign]: app user id is $newUid"
 
         ####
         # restore data
 	dataPackage="${appPackage/app_/data_}"
-        if test -e "$dataPackage" ; then
-            einfo "[$appSign]: restoring app data"
-	    $DO_IT && cat "$dataPackage" | pv -trab | $AS "$TAR -xzpf - -C $appDataDir"
+        if $DO_ACTION_DATA ; then
+            if test -e "$dataPackage" ; then
+                einfo "[$appSign]: restoring app data"
+	        $DO_IT && cat "$dataPackage" | pv -trab | $AS "$TAR -xzpf - -C $appDataDir"
 
-            ####
-            # fix lib symlink
-            symlink="$appDataDir/lib"
-            if $DO_IT && $AS test -L "$symlink" ; then # test if there is a link
-                originalSymlinkDate="$($AS "$BUSYBOX stat -c '%y' "$symlink"" | awk '{printf "%s %s\n", $1, $2}' | sed -e 's@\.[0-9]*$@@g' -e 's@ @\\ @g')"
-                $AS rm "$symlink"
-                symlink_target="$(getSymlinkTarget "$appInstalledBaseDir")"
-                if [ "a${symlink_target}b" != "ab" ] ; then
-                    $AS "ln -s "$symlink_target" "$symlink""
+                ####
+                # fix lib symlink
+                symlink="$appDataDir/lib"
+                if $DO_IT && $AS test -L "$symlink" ; then # test if there is a link
+                    originalSymlinkDate="$($AS "$BUSYBOX stat -c '%y' "$symlink"" | awk '{printf "%s %s\n", $1, $2}' | sed -e 's@\.[0-9]*$@@g' -e 's@ @\\ @g')"
+                    $AS rm "$symlink"
+                    symlink_target="$(getSymlinkTarget "$appInstalledBaseDir")"
+                    if [ "a${symlink_target}b" != "ab" ] ; then
+                        $AS "ln -s "$symlink_target" "$symlink""
+                    fi
+                    if $AS test -L "$symlink" ; then # change date if symlink created
+                        $AS "$BUSYBOX touch -ht \"$originalSymlinkDate\" "$symlink""
+                    fi
                 fi
-                if $AS test -L "$symlink" ; then # change date if symlink created
-                    $AS "$BUSYBOX touch -ht \"$originalSymlinkDate\" "$symlink""
-                fi
-            fi
 
-            ####
-            # restore app data ownership
-            if $DO_IT ; then
-                oldUid=$(getUserId "$appDataDir")
-                oldGid=$(getGroupId "$appDataDir")
-                fix_perms_script=$appDataDir/${dataDir}_fix_permissions_0234fo3.sh
+                ####
+                # restore app data ownership
+                if $DO_IT ; then
+                    oldUid=$(getUserId "$appDataDir")
+                    oldGid=$(getGroupId "$appDataDir")
+                    fix_perms_script=$appDataDir/${dataDir}_fix_permissions_0234fo3.sh
 IFS="
 "
-                createDataPermUpdateScript "$appDataDir" "$oldGid" "$newGid" "$oldUid" "$newUid" | eval $AS "$BUSYBOX tee "$fix_perms_script""
-                IFS="$OLDIFS"
-                $AS "$BUSYBOX sh "$fix_perms_script""
-                $AS "$BUSYBOX rm "$fix_perms_script""
+                    createDataPermUpdateScript "$appDataDir" "$oldGid" "$newGid" "$oldUid" "$newUid" | eval $AS "$BUSYBOX tee "$fix_perms_script""
+                    IFS="$OLDIFS"
+                    $AS "$BUSYBOX sh "$fix_perms_script""
+                    $AS "$BUSYBOX rm "$fix_perms_script""
+                fi
+            else
+                einfo "[$appSign]: NOT restoring app data -- no backup file"
             fi
         else
-            einfo "[$appSign]: NOT restoring app data -- no backup file"
+            einfo "[$appSign]: SKIP restoring app data -- as requested via commandline"
         fi
 
         #####################
         # restore app extra data
         #####################
 	extraDataPackage="${appPackage/app_/extradata_}"
-        if test -e "$extraDataPackage" ; then
-            einfo "[$appSign]: restoring app extra data"
+        if $DO_ACTION_EXT_DATA ; then
+            if test -e "$extraDataPackage" ; then
+                einfo "[$appSign]: restoring app extra data"
 
-            extraDataPath="$DATA_PATH/media/0/Android/data/${dataDir}"
-            fix_extra_perms_script=$appDataDir/${dataDir}_fix_extra_permissions_0234fo3.sh
+                extraDataPath="$DATA_PATH/media/0/Android/data/${dataDir}"
+                fix_extra_perms_script=$appDataDir/${dataDir}_fix_extra_permissions_0234fo3.sh
 
-            if $DO_IT ; then
-                $AS "$BUSYBOX mkdir -p "$extraDataPath""
-                cat "$extraDataPackage" | pv -trab | $AS "$TAR -xzpf - -C "$extraDataPath""
+                if $DO_IT ; then
+                    $AS "$BUSYBOX mkdir -p "$extraDataPath""
+                    cat "$extraDataPackage" | pv -trab | $AS "$TAR -xzpf - -C "$extraDataPath""
 IFS="
 "
-                createExtDataPermUpdateScript "$extraDataPath" "$oldGid" "$newGid" | eval $AS "$BUSYBOX tee "$fix_extra_perms_script""
-                IFS="$OLDIFS"
-                $AS "$BUSYBOX sh "$fix_extra_perms_script""
-                $AS "$BUSYBOX rm "$fix_extra_perms_script""
+                    createExtDataPermUpdateScript "$extraDataPath" "$oldGid" "$newGid" | eval $AS "$BUSYBOX tee "$fix_extra_perms_script""
+                    IFS="$OLDIFS"
+                    $AS "$BUSYBOX sh "$fix_extra_perms_script""
+                    $AS "$BUSYBOX rm "$fix_extra_perms_script""
+                fi
+            else
+                einfo "[$appSign]: NOT restoring app extra data -- no backup file"
             fi
         else
-            einfo "[$appSign]: NOT restoring app extra data -- no backup file"
+            einfo "[$appSign]: SKIP restoring app extra data -- as requested via commandline"
         fi
 
         #####################
@@ -402,17 +435,21 @@ IFS="
         #####################
         keystorePath="$DATA_PATH/misc/keystore/user_0"
 	keystorePackage="${appPackage/app_/keystore_}"
-        if test -e "$keystorePackage" ; then
-            einfo "[$appSign]: restoring keystores"
+        if $DO_ACTION_KEYSTORE ; then
+            if test -e "$keystorePackage" ; then
+                einfo "[$appSign]: restoring keystores"
 
-            if $DO_IT ; then
-                keystoreTmpDir="`$AS $BUSYBOX mktemp -d`"
-	        cat "$keystorePackage" | pv -trab | $AS "$TAR -xzpf - -C "$keystoreTmpDir""
-                restoreKeystore "$keystoreTmpDir" "$oldUid" "$newUid" "$keystorePath"
-                $AS "$BUSYBOX rmdir "$keystoreTmpDir""
+                if $DO_IT ; then
+                    keystoreTmpDir="`$AS $BUSYBOX mktemp -d`"
+	            cat "$keystorePackage" | pv -trab | $AS "$TAR -xzpf - -C "$keystoreTmpDir""
+                    restoreKeystore "$keystoreTmpDir" "$oldUid" "$newUid" "$keystorePath"
+                    $AS "$BUSYBOX rmdir "$keystoreTmpDir""
+                fi
+            else
+                einfo "[$appSign]: NOT restoring keystores -- no backup file"
             fi
         else
-            einfo "[$appSign]: NOT restoring keystores -- no backup file"
+            einfo "[$appSign]: SKIP restoring keystores -- as requested via commandline"
         fi
 
         #####################
@@ -420,16 +457,20 @@ IFS="
         #####################
 	permsPackage="${appPackage/app_/perms_}"
 	permsPackage="${permsPackage/\.tar.gz/.xml}"
-        if test -e "$permsPackage" ; then
-            einfo "[$appSign]: restoring previously permissions"
+        if $DO_ACTION_PERMISSIONS ; then
+            if test -e "$permsPackage" ; then
+                einfo "[$appSign]: restoring previously permissions"
 
-            permissions=$(getPerms "$permsPackage")
-            for x in ${permissions[@]} ; do
-                cmd="$(generatePmGrantRevokeCmd "$x" "$appSign")"
-                $DO_IT && ($AS "$cmd" && echo "success perms: $cmd" || echo "error perms: $cmd")
-            done
+                permissions=$(getPerms "$permsPackage")
+                for x in ${permissions[@]} ; do
+                    cmd="$(generatePmGrantRevokeCmd "$x" "$appSign")"
+                    $DO_IT && ($AS "$cmd" && echo "success perms: $cmd" || echo "error perms: $cmd")
+                done
+            else
+                einfo "[$appSign]: NOT restoring previously permissions -- no backup file"
+            fi
         else
-            einfo "[$appSign]: NOT restoring previously permissions -- no backup file"
+            einfo "[$appSign]: SKIP restoring previously permissions -- as requested via commandline"
         fi
 done
 #echo "script exiting after adb install will want to fix securelinux perms with: restorecon -FRDv /data/data"
