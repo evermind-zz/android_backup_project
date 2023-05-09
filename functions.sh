@@ -6,10 +6,42 @@ AMAGISK2="adb shell su 0 -c "     # -- needed for magisk rooted devices (depends
 AMAGISK3="adb shell su -c "       # -- needed for magisk rooted devices (depends on su version installed)
 AROOT="adb shell "
 BUSYBOX="${CUSTOM_BUSYBOX_TARGET_BIN:-/dev/busybox}"
+# gnu tar is used as it also restores the date of
+# root folder we expanding to. Busybox's tar will fail
+# at least this version: 'v1.34.1-osm0sis' fails.
+# no idea if other versions have fixed that
+TAR="${CUSTOM_TAR_TARGET_BIN:-/dev/tar}"
+G_DEBUG=false
+
+l_repoTarGitUrl=https://github.com/Zackptg5/Cross-Compiled-Binaries-Android
+l_repoTarDir=$(basename $l_repoTarGitUrl)
+
+function einfo()
+{
+    echo "$@"
+}
+
+function einfo2()
+{
+    echo "$@" 1>&2
+}
+
+function edebug()
+{
+    if $G_DEBUG ; then
+        echo "DBG: $@" 1>&2
+    fi
+}
+
+function eerror()
+{
+    echo "$@" 1>&2
+}
 
 function cleanup()
 {
 	$AS "rm $BUSYBOX"
+	$AS "rm $TAR"
 }
 
 function checkForCleanData()
@@ -157,10 +189,33 @@ function mkBackupDir()
 	mkdir -p $DIR
 }
 
-function pushBusybox()
+function fallbackArch()
 {
-	echo "Determining architecture..."
-	target_arch="$($AS uname -m)"
+	einfo2 "Determining architecture..."
+	local target_arch="$1"
+        local fallbackArch=""
+	case $target_arch in
+		arm|arm64)
+			fallback_arch=arm
+			;;
+		mips|mips64)
+			fallback_arch=mips
+			;;
+		x86|x86_64)
+			fallback_arch=x86
+			;;
+		*)
+			einfo2 "Unrecognized architecture $target_arch"
+			exit 1
+			;;
+	esac
+        echo $fallback_arch
+}
+
+function determineArch()
+{
+	einfo2 "Determining architecture..."
+	local target_arch="$($AS uname -m)"
 	case $target_arch in
 		aarch64|arm64|armv8|armv8a)
 			target_arch=arm64
@@ -181,21 +236,44 @@ function pushBusybox()
 			target_arch=x86_64
 			;;
 		*)
-			echo "Unrecognized architecture $target_arch"
+			einfo2 "Unrecognized architecture $target_arch"
 			exit 1
 			;;
 	esac
+        echo $target_arch
+}
 
-	echo "Pushing busybox to device..."
+function pushBinary() {
+        local binaryName="$1"
+        local srcBinary="$2"
+        local targetBinary="$3"
+        local targetBinaryArgsToMakeExitCleanly="$4" # eg --help
 
-	$A push busybox-ndk/busybox-$target_arch /sdcard/busybox
-	$AS "mv /sdcard/busybox $BUSYBOX"
-	$AS "chmod +x $BUSYBOX"
+        cat "$srcBinary" | $AS "tee $targetBinary > /dev/null"
+	$AS "chmod +x $targetBinary"
 
-	if ! $AS "$BUSYBOX >/dev/null"; then
-		echo "Busybox doesn't work here!"
+	if ! $AS "$targetBinary $targetBinaryArgsToMakeExitCleanly >/dev/null"; then
+		echo "$binaryName doesn't work here!"
 		exit 1
 	fi
+}
+
+function pushTarBinary()
+{
+        local target_arch="$(determineArch)"
+	echo "Pushing tar to device..."
+
+        if [ "a${target_arch}b" == "ax86_64b" ]; then
+            target_arch="x64"
+        fi
+        pushBinary "Tar" "$l_repoTarDir/tar/tar-$target_arch" "$TAR" "--help"
+}
+
+function pushBusybox()
+{
+        local target_arch="$(determineArch)"
+	echo "Pushing busybox to device..."
+	pushBinary "Busybox" "busybox-ndk/busybox-$target_arch" "$BUSYBOX" "--help"
 }
 
 function stopRuntime()
@@ -206,6 +284,20 @@ function stopRuntime()
 function startRuntime()
 {
 	echo "## Restart Runtime" && $AS start
+}
+
+function updateTarBinary()
+{
+    if [ ! -d "$l_repoTarDir" ]; then
+        git clone --depth 1 --filter=blob:none --sparse "$l_repoTarGitUrl"
+        pushd "$l_repoTarDir"
+        git sparse-checkout set tar
+        popd
+    else
+        pushd "$l_repoTarDir"
+        git pull
+        popd
+    fi
 }
 
 function updateBusybox()
@@ -219,3 +311,12 @@ function updateBusybox()
 	fi
 }
 
+function getUserId()
+{
+        $AS $BUSYBOX stat -c "%u" "$1"
+}
+
+function getGroupId()
+{
+        $AS $BUSYBOX stat -c "%g" "$1"
+}
