@@ -298,7 +298,7 @@ for appSign in $APPS; do
         # restore app
         #####################
 
-        appPackage="$appSign/app_${appSign}.tar.gz"
+        appPackage="$(getAppFileName "${appSign}")"
         if $DO_ACTION_APK ; then
             if test -e "$appPackage" ; then
 
@@ -361,7 +361,7 @@ for appSign in $APPS; do
 
         ####
         # restore data
-	dataPackage="${appPackage/app_/data_}"
+	dataPackage="$(getDataFileName "${appPackage}")"
         if $DO_ACTION_DATA ; then
             if test -e "$dataPackage" ; then
                 einfo "[$appSign]: restoring app data"
@@ -405,7 +405,7 @@ IFS="
         #####################
         # restore app extra data
         #####################
-	extraDataPackage="${appPackage/app_/extradata_}"
+	extraDataPackage="$(getExtraDataFileName "${appPackage}")"
         if $DO_ACTION_EXT_DATA ; then
             if test -e "$extraDataPackage" ; then
                 einfo "[$appSign]: restoring app extra data"
@@ -434,7 +434,7 @@ IFS="
         # restore keystore(s)
         #####################
         keystorePath="$DATA_PATH/misc/keystore/user_0"
-	keystorePackage="${appPackage/app_/keystore_}"
+	keystorePackage="$(getKeystoreFileName "${appPackage}")"
         if $DO_ACTION_KEYSTORE ; then
             if test -e "$keystorePackage" ; then
                 einfo "[$appSign]: restoring keystores"
@@ -455,8 +455,7 @@ IFS="
         #####################
         # restore previously permissions"
         #####################
-	permsPackage="${appPackage/app_/perms_}"
-	permsPackage="${permsPackage/\.tar.gz/.xml}"
+	permsPackage=$(getPermFileName "${appPackage}")
         if $DO_ACTION_PERMISSIONS ; then
             if test -e "$permsPackage" ; then
                 einfo "[$appSign]: restoring previously permissions"

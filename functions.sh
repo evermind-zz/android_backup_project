@@ -44,6 +44,37 @@ function cleanup()
 	$AS "rm $TAR"
 }
 
+function getAppFileName()
+{
+    local apkSign="$1"
+    echo "$apkSign/app_${apkSign}.tar.gz"
+}
+
+function getDataFileName()
+{
+    local appPackage="$1"
+    echo "${appPackage/app_/data_}"
+}
+
+function getExtraDataFileName()
+{
+    local appPackage="$1"
+    echo "${appPackage/app_/extradata_}"
+}
+
+function getKeystoreFileName()
+{
+    local appPackage="$1"
+    echo "${appPackage/app_/keystore_}"
+}
+
+function getPermFileName() {
+    local appPackage="$1"
+    local permsPackage="${appPackage/app_/perms_}"
+    permsPackage="${permsPackage/\.tar.gz/.xml}"
+    echo "$permsPackage"
+}
+
 function checkForCleanData()
 {
 	if ! [ "$($AS ls /data/ | wc -l)" -gt 1 ]; then
@@ -179,14 +210,14 @@ function mkBackupDir()
 	BUILD=`$AS getprop ro.build.id | tr -d '\r'`
 
 	DATE=`date +%F`
-	DIR="${HW}_${DATE}_${BUILD}"
-	if test -d "$DIR"; then
-    		echo "$DIR already exists, exiting"
-    		exit 2
+	BACKUP_DIR="${HW}_${DATE}_${BUILD}"
+	if test -d "$BACKUP_DIR"; then
+            echo "$BACKUP_DIR already exists, exiting"
+            exit 2
 	fi
 
-	echo "### Creating dir $DIR"
-	mkdir -p $DIR
+	echo "### Creating dir $BACKUP_DIR"
+	mkdir -p $BACKUP_DIR
 }
 
 function fallbackArch()
