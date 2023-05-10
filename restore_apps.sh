@@ -104,7 +104,7 @@ checkPrerequisites
 
 if $DO_IT ; then
     updateBusybox
-    updateTar
+    updateTarBinary
 
     lookForAdbDevice
 
@@ -249,6 +249,11 @@ function getPerms() {
     xmlstarlet sel -T -t -m "//pkg/item"  -v "@name" -o "|" -v "@granted" -n  "$permsXml"
 }
 
+function getMetaAttr() {
+    local attr="$1"
+    local metaXml="$2"
+    xmlstarlet sel -T -t -m "//package"  -v "@$attr"  -n  "$metaXml"
+}
 
 function getPipeSeparatedField() {
     local pos="$1"
@@ -295,13 +300,18 @@ edebug "APPS=$APPS"
 
 for appSign in $APPS; do
 	edebug "appSign=$appSign"
+        appPackage="$(getAppFileName "${appSign}")"
+        metaPackage="$(getMetaFileName "${appPackage}")"
 
         installer=""
+        # read original installer app from $metaPackage
+        if test -e "$metaPackage" ; then
+            installer=$(getMetaAttr "installer" "$metaPackage")
+        fi
         #####################
         # restore app
         #####################
 
-        appPackage="$(getAppFileName "${appSign}")"
         if $DO_ACTION_APK ; then
             if test -e "$appPackage" ; then
 
@@ -313,7 +323,7 @@ for appSign in $APPS; do
                     pushd /tmp &> /dev/null
 	            #error=`$A install-multiple -r -t ${APP}`
 	            #eerror "[$appSign]: error=$error"
-                    installApks "$installer" $@
+                    installApks "$installer" ${APP}
 
 	            rm ${APP}
 	            popd &> /dev/null

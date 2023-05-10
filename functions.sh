@@ -75,6 +75,13 @@ function getPermFileName() {
     echo "$permsPackage"
 }
 
+function getMetaFileName() {
+    local appPackage="$1"
+    local permsPackage=$(getPermFileName "${appPackage}") # get xml extension
+    local metaPackage="${permsPackage/perms_/meta_}"
+    echo "$metaPackage"
+}
+
 function checkForCleanData()
 {
 	if ! [ "$($AS ls /data/ | wc -l)" -gt 1 ]; then
@@ -280,10 +287,13 @@ function pushBinary() {
         local targetBinary="$3"
         local targetBinaryArgsToMakeExitCleanly="$4" # eg --help
 
-        cat "$srcBinary" | $AS "tee $targetBinary > /dev/null"
-	$AS "chmod +x $targetBinary"
+        if $AS test -e "$targetBinary" ; then
+            $AS rm "$targetBinary"
+        fi
+        cat "$srcBinary" | $AS tee $targetBinary > /dev/null
+	$AS chmod +x $targetBinary
 
-	if ! $AS "$targetBinary $targetBinaryArgsToMakeExitCleanly >/dev/null"; then
+	if ! $AS $targetBinary $targetBinaryArgsToMakeExitCleanly >/dev/null; then
 		echo "$binaryName doesn't work here!"
 		exit 1
 	fi
@@ -302,9 +312,12 @@ function pushTarBinary()
 
 function pushBusybox()
 {
+        local useSelinuxVersion="$1"
+        local selinuxPostfix=""
+        [ "a${useSelinuxVersion}b" != "ab" ] && selinuxPostfix="-selinux"
         local target_arch="$(determineArch)"
 	echo "Pushing busybox to device..."
-	pushBinary "Busybox" "busybox-ndk/busybox-$target_arch" "$BUSYBOX" "--help"
+	pushBinary "Busybox" "busybox-ndk/busybox-${target_arch}${selinuxPostfix}" "$BUSYBOX" "--help"
 }
 
 function stopRuntime()
@@ -321,13 +334,13 @@ function updateTarBinary()
 {
     if [ ! -d "$l_repoTarDir" ]; then
         git clone --depth 1 --filter=blob:none --sparse "$l_repoTarGitUrl"
-        pushd "$l_repoTarDir"
+        pushd "$l_repoTarDir" &> /dev/null
         git sparse-checkout set tar
-        popd
+        popd &> /dev/null
     else
-        pushd "$l_repoTarDir"
+        pushd "$l_repoTarDir" &> /dev/null
         git pull
-        popd
+        popd &> /dev/null
     fi
 }
 
@@ -336,9 +349,9 @@ function updateBusybox()
 	if [ ! -d busybox-ndk ]; then
 		git clone https://github.com/Magisk-Modules-Repo/busybox-ndk
 	else
-		pushd busybox-ndk
+		pushd busybox-ndk &> /dev/null
 		git pull
-		popd
+		popd &> /dev/null
 	fi
 }
 
