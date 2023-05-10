@@ -11,7 +11,7 @@ BUSYBOX="${CUSTOM_BUSYBOX_TARGET_BIN:-/dev/busybox}"
 # at least this version: 'v1.34.1-osm0sis' fails.
 # no idea if other versions have fixed that
 TAR="${CUSTOM_TAR_TARGET_BIN:-/dev/tar}"
-G_DEBUG=false
+G_DEBUG=${DEBUG:-false}
 
 l_repoTarGitUrl=https://github.com/Zackptg5/Cross-Compiled-Binaries-Android
 l_repoTarDir=$(basename $l_repoTarGitUrl)

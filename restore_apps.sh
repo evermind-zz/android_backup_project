@@ -35,6 +35,9 @@ while [ $argCount -gt 0 ] ; do
         shift; let argCount-=1
         BACKUP_DIR="$1"
         shift; let argCount-=1
+    elif [[ "$1" == "--debug" ]]; then
+        shift; let argCount-=1
+        DEBUG=true
     elif [[ "$1" == "--do-nothing" ]]; then
         shift; let argCount-=1
         DO_IT=false

@@ -28,6 +28,9 @@ while [ $argCount -gt 0 ] ; do
         shift; let argCount-=1
         BACKUP_DIR="$1"
         shift; let argCount-=1
+    elif [[ "$1" == "--debug" ]]; then
+        shift; let argCount-=1
+        DEBUG=true
     elif [[ "$1" == "--local" ]]; then
         IS_LOCAL=true
         AS=sudo
@@ -195,9 +198,9 @@ for APP in `matchApp`; do
 	    dataDir=`echo $APP | sed 's/package://' | rev | cut -d "=" -f1 | rev`
         fi
 
-	echo $appPath
-	echo $appDir
-	echo $dataDir
+	edebug appPath=$appPath
+	edebug appDir=$appDir
+	edebug dataDir=$dataDir
 
         if $IS_LOCAL ; then
                 appSign="${dataDir}"
