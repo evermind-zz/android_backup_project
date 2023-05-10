@@ -4,7 +4,6 @@
 # Tested/Fixed for Android O by marc_soft@merlins.org 2017/12
 # improved / completly reworked to play nice with Android 9 / 10 by anddisa@gmail.com 2019/12
 
-# set path for busybox if wanted
 IS_LOCAL=false
 
 DATA_PATH="/data"
@@ -18,7 +17,9 @@ DO_ACTION_DATA=true
 DO_ACTION_EXT_DATA=true
 DO_ACTION_KEYSTORE=true
 DO_ACTION_PERMISSIONS=true
+DO_ACTION_EXT_DATA_SDCARD=false
 HAS_CUSTOM_BACKUP_DIR=false
+USE_BUSYBOX_SELINUX_VARIANT=""
 
 argCount=${#@}
 while [ $argCount -gt 0 ] ; do
@@ -29,8 +30,13 @@ while [ $argCount -gt 0 ] ; do
         shift; let argCount-=1
     elif [[ "$1" == "--local" ]]; then
         IS_LOCAL=true
+        AS=sudo
         CUSTOM_BUSYBOX_TARGET_BIN=/tmp/busybox
+        CUSTOM_TAR_TARGET_BIN=/tmp/tar
         shift; let argCount-=1
+    elif [[ "$1" == "--use-busybox-selinux" ]]; then
+        shift; let argCount-=1
+        USE_BUSYBOX_SELINUX_VARIANT="Yeah"
     elif [[ "$1" == "--do-nothing" ]]; then
         shift; let argCount-=1
         DO_IT=false
@@ -49,9 +55,10 @@ while [ $argCount -gt 0 ] ; do
     elif [[ "$1" == "--no-perms" ]]; then
         shift; let argCount-=1
         DO_ACTION_PERMISSIONS=false
+    elif [[ "$1" == "--ext-data-sdcard" ]]; then
+        shift; let argCount-=1
+        DO_ACTION_EXT_DATA_SDCARD=true
     elif [[ "$1" == "--data-path" ]]; then
-        IS_LOCAL=true
-        #CUSTOM_BUSYBOX_TARGET_BIN=/tmp/busybox
         shift; let argCount-=1
         DATA_PATH=$1
         shift; let argCount-=1
@@ -107,6 +114,7 @@ set -e   # fail early
 #checkPrerequisites
 
 updateBusybox
+updateTarBinary
 
 #lookForAdbDevice
 
@@ -114,14 +122,21 @@ updateBusybox
 
 #checkForCleanData
 
-#pushBusybox
+pushBusybox "$USE_BUSYBOX_SELINUX_VARIANT"
+pushTarBinary
 
 if ! $HAS_CUSTOM_BACKUP_DIR ; then
     einfo2 mkBackupDir
     #mkBackupDir
 fi
-mkdir -p $BACKUP_DIR
-pushd $BACKUP_DIR
+mkdir -p "$BACKUP_DIR"
+pushd "$BACKUP_DIR" &> /dev/null
+
+function getMetaXmlData()
+{
+    local appSign="$1"
+    $AS cat $DATA_PATH/system/packages.xml |  xmlstarlet sel -t -c "` echo "/packages/package[@name = 'FOLLER']" | sed -e "s@FOLLER@$appSign@g"`"
+}
 
 if $IS_LOCAL ; then
     PACKAGES=$(xmlstarlet select -T -t -m "//packages/package"  -v "@codePath" -o "|" -v "@name" -n $DATA_PATH/system/packages.xml)
@@ -152,10 +167,18 @@ function matchApp()
 function getPermsXmlData()
 {
     local appSign="$1"
-    sudo xmlstarlet sel -t -c "` echo "/runtime-permissions/pkg[@name = 'FOLLER']" | sed -e "s@FOLLER@$appSign@g"`" $DATA_PATH/system/users/0/runtime-permissions.xml
+    $AS xmlstarlet sel -t -c "` echo "/runtime-permissions/pkg[@name = 'FOLLER']" | sed -e "s@FOLLER@$appSign@g"`" $DATA_PATH/system/users/0/runtime-permissions.xml
 }
 
-DATADIR=""
+function doesDirHaveFiles()
+{
+    local path="$1"
+    if [ `find "$path" ! -type d 2>/dev/null | wc -l` -eq 0 ] ; then
+        return 1
+    fi
+    return 0
+}
+
 DATA_PATTERN="/data/app"
 PATTERN=$DATA_PATTERN
 if [[ "$SYSTEM_PATTERN" != "" ]]; then PATTERN="$SYSTEM_PATTERN}\|$DATA_PATTERN" ; fi
@@ -177,42 +200,95 @@ for APP in `matchApp`; do
 	echo $dataDir
 
         if $IS_LOCAL ; then
-                mkdir "${dataDir}" # dir per app
-                appPackage="$(getAppFileName "${dataDir}")"
-                # get apk
-                if $DO_ACTION_APK ; then
-		    sudo $BUSYBOX tar -C $DATA_PATH/$appDir -czpf - ./ 2>/dev/null | pv -trabi 1 > "$appPackage"
+                appSign="${dataDir}"
+                if ! $AS test -e "${dataDir}" ; then
+                    mkdir "${dataDir}" # dir per app
+                else
+                    einfo "[$appSign]: SKIP backup -- a backup already exists in $BACKUP_DIR"
+                    continue
                 fi
-                # get data
-                if $DO_ACTION_DATA ; then
-		    sudo $BUSYBOX tar -C $DATA_PATH/data/$dataDir -czpf - ./ 2>/dev/null | pv -trabi 1 > "$(getDataFileName "${appPackage}")"
+                appPackage="$(getAppFileName "${dataDir}")"
+
+                #####################
+                # backup app
+                #####################
+                if $DO_ACTION_APK ; then
+                    einfo "[$appSign]: backup apk(s): $APP "
+		    $AS $TAR -C $DATA_PATH/$appDir -czpf - ./ 2>/dev/null | pv -trabi 1 > "$appPackage"
+                else
+                    einfo "[$appSign]: SKIP backup apk(s) -- as requested via commandline"
                 fi
 
+                #####################
+                # backup app data
+                #####################
+                if $DO_ACTION_DATA ; then
+                    einfo "[$appSign]: backup app data"
+		    $AS $TAR -C $DATA_PATH/data/$dataDir -czpf - ./ 2>/dev/null | pv -trabi 1 > "$(getDataFileName "${appPackage}")"
+                else
+                    einfo "[$appSign]: SKIP backup app data -- as requested via commandline"
+                fi
+
+                #####################
+                # backup keystore(s)
+                #####################
                 if $DO_ACTION_KEYSTORE ; then
                     # get keystore if exists
-                    AS=""
                     USERID="`getUserId  $DATA_PATH/data/$dataDir`"
                     keystorePath=$DATA_PATH/misc/keystore/user_0
                     keystoreForAppList=/tmp/filelist.backup_apps.list
                     olddir="$PWD"
                     #cd $keystorePath && $BUSYBOX find | grep "${USERID}_" > $keystoreForAppList
-                    cd $keystorePath && sudo $BUSYBOX find -name "*${USERID}_*" > $keystoreForAppList
+                    cd "$keystorePath" && $AS $BUSYBOX find -name "*${USERID}_*" > $keystoreForAppList
                     cd "$olddir" &>/dev/null
                     # check if there are any $USERID matches at all
                     if [ `$BUSYBOX stat -c %s $keystoreForAppList` -gt 0 ] ; then
-                        sudo $BUSYBOX tar -C $keystorePath -czpf - -T "$keystoreForAppList" 2>/dev/null | pv -trabi 1 > "$(getKeystoreFileName "${appPackage}")"
+                        einfo "[$appSign]: backup keystores"
+                        $AS $TAR -C $keystorePath -czpf - -T "$keystoreForAppList" 2>/dev/null | pv -trabi 1 > "$(getKeystoreFileName "${appPackage}")"
+                    else
+                        einfo "[$appSign]: SKIP backup keystores -- no keystores for this app"
                     fi
                     rm $keystoreForAppList
+                else
+                    einfo "[$appSign]: SKIP backup keystores -- as requested via commandline"
                 fi
 
+                #####################
+                # backup app extra data
+                #####################
                 if $DO_ACTION_EXT_DATA ; then
                     extraDataPath="$DATA_PATH/media/0/Android/data/${dataDir}"
-		    sudo $BUSYBOX tar -C $extraDataPath -czpf - ./ 2>/dev/null | pv -trabi 1 > "$(getExtraDataFileName "${appPackage}")"
+                    if doesDirHaveFiles "$extraDataPath" ; then
+                        einfo "[$appSign]: backup app extra data"
+		        $AS $TAR -C $extraDataPath -czpf - ./ 2>/dev/null | pv -trabi 1 > "$(getExtraDataFileName "${appPackage}")"
+                    else
+                        einfo "[$appSign]: NOT backup app extra data -- no files to backup"
+                    fi
+                else
+                    einfo "[$appSign]: SKIP backup app extra data -- as requested via commandline"
+                fi
+
+                ## at the moment this is not working on local
+                if $DO_ACTION_EXT_DATA_SDCARD ; then
+                    for sdcardExtraData in $($AS 'ls -d /mnt/media_rw/*') ; do
+
+                        extraDataPath="$sdcardExtraData/Android/data/${dataDir}"
+                        if doesDirHaveFiles "$extraDataPath" ; then
+                            sdcardId="$(basename "$sdcardExtraData")"
+                            extraDataFileName="$(getExtraDataFileName "${appPackage}" | sed -e "s@\(.tar.gz\)@${sdcardId}\1@g")"
+		            $AS $TAR -C $extraDataPath -czpf - ./ 2>/dev/null | pv -trabi 1 > "$extraDataFileName"
+                        fi
+                    done
                 fi
 
                 if $DO_ACTION_PERMISSIONS ; then
                     getPermsXmlData "$dataDir" > $(getPermFileName "${appPackage}")
                 fi
+
+                ############
+                # backup meta data
+                getMetaXmlData "$dataDir" > $(getMetaFileName "${appPackage}")
+
 
 
         elif [[ "$AS" == "$AROOT" ]]; then
@@ -235,7 +311,7 @@ for APP in `matchApp`; do
 	fi
 done
 
-#cleanup
+cleanup
 
 #startRuntime
-popd
+popd &> /dev/null

@@ -40,8 +40,8 @@ function eerror()
 
 function cleanup()
 {
-	$AS "rm $BUSYBOX"
-	$AS "rm $TAR"
+	$AS rm "$BUSYBOX"
+	$AS rm "$TAR"
 }
 
 function getAppFileName()
