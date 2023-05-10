@@ -292,6 +292,56 @@ function getSymlinkTarget()
     fi
 }
 
+function restoreExtraData()
+{
+    extraDataPackage="$(getExtraDataFileName "${appPackage}")"
+    if $DO_ACTION_EXT_DATA ; then
+        if test -e "$extraDataPackage" ; then
+            einfo "[$appSign]: restoring app extra data"
+
+            extraDataPath="$DATA_PATH/media/0/Android/data/${dataDir}"
+            fix_extra_perms_script=$appDataDir/${dataDir}_fix_extra_permissions_0234fo3.sh
+
+            if $DO_IT ; then
+                $AS "$BUSYBOX mkdir -p "$extraDataPath""
+                cat "$extraDataPackage" | pv -trab | $AS "$TAR -xzpf - -C "$extraDataPath""
+IFS="
+"
+                createExtDataPermUpdateScript "$extraDataPath" "$oldGid" "$newGid" | eval $AS "$BUSYBOX tee "$fix_extra_perms_script""
+                IFS="$OLDIFS"
+                $AS "$BUSYBOX sh "$fix_extra_perms_script""
+                $AS "$BUSYBOX rm "$fix_extra_perms_script""
+            fi
+        else
+            einfo "[$appSign]: NOT restoring app extra data -- no backup file"
+        fi
+    else
+        einfo "[$appSign]: SKIP restoring app extra data -- as requested via commandline"
+    fi
+}
+
+function restoreKeystores()
+{
+    keystorePath="$DATA_PATH/misc/keystore/user_0"
+    keystorePackage="$(getKeystoreFileName "${appPackage}")"
+    if $DO_ACTION_KEYSTORE ; then
+        if test -e "$keystorePackage" ; then
+            einfo "[$appSign]: restoring keystores"
+
+            if $DO_IT ; then
+                keystoreTmpDir="`$AS $BUSYBOX mktemp -d`"
+                cat "$keystorePackage" | pv -trab | $AS "$TAR -xzpf - -C "$keystoreTmpDir""
+                restoreKeystore "$keystoreTmpDir" "$oldUid" "$newUid" "$keystorePath"
+                $AS "$BUSYBOX rmdir "$keystoreTmpDir""
+            fi
+        else
+            einfo "[$appSign]: NOT restoring keystores -- no backup file"
+        fi
+    else
+        einfo "[$appSign]: SKIP restoring keystores -- as requested via commandline"
+    fi
+}
+
 einfo "## Installing apps"
 
 matchApp
@@ -418,53 +468,35 @@ IFS="
         fi
 
         #####################
+        # in case no action data to be restored we still need need to know the oldGid
+        # to properly restore the extra data / keystore data
+        #####################
+        IS_OLDUID_OLDGID_PRESENT=true
+        if ! $DO_ACTION_DATA ; then
+            if test -e "$metaPackage" ; then
+                oldGid=$(getMetaAttr "userId" "$metaPackage")
+                oldUid=$oldGid
+            else
+                IS_OLDUID_OLDGID_PRESENT=false
+            fi
+        fi
+
+        #####################
         # restore app extra data
         #####################
-	extraDataPackage="$(getExtraDataFileName "${appPackage}")"
-        if $DO_ACTION_EXT_DATA ; then
-            if test -e "$extraDataPackage" ; then
-                einfo "[$appSign]: restoring app extra data"
-
-                extraDataPath="$DATA_PATH/media/0/Android/data/${dataDir}"
-                fix_extra_perms_script=$appDataDir/${dataDir}_fix_extra_permissions_0234fo3.sh
-
-                if $DO_IT ; then
-                    $AS "$BUSYBOX mkdir -p "$extraDataPath""
-                    cat "$extraDataPackage" | pv -trab | $AS "$TAR -xzpf - -C "$extraDataPath""
-IFS="
-"
-                    createExtDataPermUpdateScript "$extraDataPath" "$oldGid" "$newGid" | eval $AS "$BUSYBOX tee "$fix_extra_perms_script""
-                    IFS="$OLDIFS"
-                    $AS "$BUSYBOX sh "$fix_extra_perms_script""
-                    $AS "$BUSYBOX rm "$fix_extra_perms_script""
-                fi
-            else
-                einfo "[$appSign]: NOT restoring app extra data -- no backup file"
-            fi
+        if $IS_OLDUID_OLDGID_PRESENT ; then
+            restoreExtraData
         else
-            einfo "[$appSign]: SKIP restoring app extra data -- as requested via commandline"
+            einfo "[$appSign]: IMPOSSIBLE restoring app extra data -- as oldUid/oldGid not found in $metaPackage"
         fi
 
         #####################
         # restore keystore(s)
         #####################
-        keystorePath="$DATA_PATH/misc/keystore/user_0"
-	keystorePackage="$(getKeystoreFileName "${appPackage}")"
-        if $DO_ACTION_KEYSTORE ; then
-            if test -e "$keystorePackage" ; then
-                einfo "[$appSign]: restoring keystores"
-
-                if $DO_IT ; then
-                    keystoreTmpDir="`$AS $BUSYBOX mktemp -d`"
-	            cat "$keystorePackage" | pv -trab | $AS "$TAR -xzpf - -C "$keystoreTmpDir""
-                    restoreKeystore "$keystoreTmpDir" "$oldUid" "$newUid" "$keystorePath"
-                    $AS "$BUSYBOX rmdir "$keystoreTmpDir""
-                fi
-            else
-                einfo "[$appSign]: NOT restoring keystores -- no backup file"
-            fi
+        if $IS_OLDUID_OLDGID_PRESENT ; then
+            restoreKeystores
         else
-            einfo "[$appSign]: SKIP restoring keystores -- as requested via commandline"
+            einfo "[$appSign]: IMPOSSIBLE restoring keystores -- as oldUid/oldGid not found in $metaPackage"
         fi
 
         #####################
