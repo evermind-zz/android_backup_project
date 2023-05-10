@@ -94,6 +94,7 @@ fi
 
 curr_dir="$(dirname "$0")"
 . "$curr_dir/functions.sh"
+. "$curr_dir/lib/functions_installer.sh"
 
 set -e   # fail early
 
@@ -294,6 +295,8 @@ edebug "APPS=$APPS"
 
 for appSign in $APPS; do
 	edebug "appSign=$appSign"
+
+        installer=""
         #####################
         # restore app
         #####################
@@ -308,8 +311,10 @@ for appSign in $APPS; do
 	        edebug "[$appSign]: Installing: APP=$APP"
 	        if $DO_IT ; then
                     pushd /tmp &> /dev/null
-	            error=`$A install-multiple -r -t ${APP}`
-	            eerror "[$appSign]: error=$error"
+	            #error=`$A install-multiple -r -t ${APP}`
+	            #eerror "[$appSign]: error=$error"
+                    installApks "$installer" $@
+
 	            rm ${APP}
 	            popd &> /dev/null
                 fi
