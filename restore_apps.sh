@@ -128,13 +128,13 @@ function matchApp() {
             NEW_APPS+=(`echo "${APPS}" | grep "^${x}$"`)
         done
         FNC_RETURN="${NEW_APPS[*]}"
-	echo "## Restoring matching app(s) in $BACKUP_DIR: "${FNC_RETURN}""
+	einfo "## Restoring matching app(s) in $BACKUP_DIR: "${FNC_RETURN}""
     elif $DO_SINGLE_APP ; then
         FNC_RETURN="`echo "$APPS" | grep "$SINGLE_APP"`"
-	echo "## Restoring single app in $BACKUP_DIR: "${FNC_RETURN}""
+	einfo "## Restoring single app in $BACKUP_DIR: "${FNC_RETURN}""
     else
         FNC_RETURN="`echo "$APPS"`"
-	echo "## Restoring all apps in $BACKUP_DIR: "${FNC_RETURN}""
+	einfo "## Restoring all apps in $BACKUP_DIR: "${FNC_RETURN}""
     fi
 }
 
@@ -361,7 +361,6 @@ einfo "## Installing apps"
 matchApp
 APPS="$FNC_RETURN"
 edebug "APPS=$APPS"
-
 for appSign in $APPS; do
 	edebug "appSign=$appSign"
         checkForEncryptedBackup "${appSign}"

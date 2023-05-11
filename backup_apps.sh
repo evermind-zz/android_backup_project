@@ -117,44 +117,11 @@ curr_dir="$(dirname "$0")"
 
 set -e   # fail early
 
-
-#checkPrerequisites
-
-updateBusybox
-updateTarBinary
-
-#lookForAdbDevice
-
-#checkRootType
-
-#checkForCleanData
-
-pushBusybox "$USE_BUSYBOX_SELINUX_VARIANT"
-pushTarBinary
-
-if ! $HAS_CUSTOM_BACKUP_DIR ; then
-    einfo2 mkBackupDir
-    #mkBackupDir
-fi
-mkdir -p "$BACKUP_DIR"
-pushd "$BACKUP_DIR" &> /dev/null
-
 function getMetaXmlData()
 {
     local appSign="$1"
     $AS cat $DATA_PATH/system/packages.xml | xmlstarlet sel -t -c "` echo "/packages/package[@name = 'FOLLER']" | sed -e "s@FOLLER@$appSign@g"`"
 }
-
-if $IS_LOCAL ; then
-    PACKAGES=$($AS cat "$DATA_PATH/system/packages.xml" | xmlstarlet sel -T -t -m "//packages/package"  -v "@codePath" -o "|" -v "@name" -n)
-else
-    PACKAGES=$($A shell "cmd package list packages -f")
-fi
-#echo $PACKAGES
-
-#stopRuntime
-
-echo "## Pull apps"
 
 function matchApp()
 {
@@ -165,9 +132,9 @@ function matchApp()
         done
         #echo $PACKAGES | tr " " "\n" | egrep "($MATCHING_APPS)$"
         PACKAGES="${NEW_APPS[*]}"
-        echo $PACKAGES
+        FNC_RETURN=$PACKAGES
     else
-        echo $PACKAGES | tr " " "\n" | grep "${PATTERN}" | grep "$SINGLE_APP"
+        FNC_RETURN=$(echo $PACKAGES | tr " " "\n" | grep "${PATTERN}" | grep "$SINGLE_APP")
     fi
 }
 
@@ -193,6 +160,40 @@ function doesDirHaveFiles()
     return 0
 }
 
+#checkPrerequisites
+
+updateBusybox
+updateTarBinary
+
+#lookForAdbDevice
+
+#checkRootType
+
+#checkForCleanData
+
+pushBusybox "$USE_BUSYBOX_SELINUX_VARIANT"
+pushTarBinary
+
+if ! $HAS_CUSTOM_BACKUP_DIR ; then
+    einfo2 mkBackupDir
+    #mkBackupDir
+fi
+
+mkdir -p "$BACKUP_DIR"
+pushd "$BACKUP_DIR" &> /dev/null
+
+if $IS_LOCAL ; then
+    PACKAGES=$($AS cat "$DATA_PATH/system/packages.xml" | xmlstarlet sel -T -t -m "//packages/package"  -v "@codePath" -o "|" -v "@name" -n)
+else
+    PACKAGES=$($A shell "cmd package list packages -f")
+fi
+#echo $PACKAGES
+
+#stopRuntime
+
+echo "## Pull apps"
+
+
 DATA_PATTERN="/data/app"
 PATTERN=$DATA_PATTERN
 if [[ "$SYSTEM_PATTERN" != "" ]]; then PATTERN="$SYSTEM_PATTERN}\|$DATA_PATTERN" ; fi
@@ -208,7 +209,10 @@ fi
 
 showGlobalBackupInfo
 
-for APP in `matchApp`; do
+matchApp
+APPS="$FNC_RETURN"
+edebug "APPS=$APPS"
+for APP in $APPS; do
 	echo $APP
 
         if $IS_LOCAL ; then
