@@ -249,13 +249,13 @@ function restoreKeystore() {
 
 function getPerms() {
     local permsXml="$1"
-    xmlstarlet sel -T -t -m "//pkg/item"  -v "@name" -o "|" -v "@granted" -n  "$permsXml"
+    cat "$permsXml" | decryptIfNeeded | xmlstarlet sel -T -t -m "//pkg/item"  -v "@name" -o "|" -v "@granted" -n
 }
 
 function getMetaAttr() {
     local attr="$1"
     local metaXml="$2"
-    xmlstarlet sel -T -t -m "//package"  -v "@$attr"  -n  "$metaXml"
+    cat "$metaXml" | decryptIfNeeded | xmlstarlet sel -T -t -m "//package"  -v "@$attr"  -n
 }
 
 function getPipeSeparatedField() {
@@ -307,7 +307,7 @@ function restoreExtraData()
 
             if $DO_IT ; then
                 $AS "$BUSYBOX mkdir -p "$extraDataPath""
-                cat "$extraDataPackage" | pv -trab | $AS "$TAR -xzpf - -C "$extraDataPath""
+                cat "$extraDataPackage" | decryptIfNeeded | pv -trab | $AS "$TAR -xzpf - -C "$extraDataPath""
 IFS="
 "
                 createExtDataPermUpdateScript "$extraDataPath" "$oldGid" "$newGid" | eval $AS "$BUSYBOX tee "$fix_extra_perms_script""
@@ -333,7 +333,7 @@ function restoreKeystores()
 
             if $DO_IT ; then
                 keystoreTmpDir="`$AS $BUSYBOX mktemp -d`"
-                cat "$keystorePackage" | pv -trab | $AS "$TAR -xzpf - -C "$keystoreTmpDir""
+                cat "$keystorePackage" | decryptIfNeeded | pv -trab | $AS "$TAR -xzpf - -C "$keystoreTmpDir""
                 restoreKeystore "$keystoreTmpDir" "$oldUid" "$newUid" "$keystorePath"
                 $AS "$BUSYBOX rmdir "$keystoreTmpDir""
             fi
@@ -345,6 +345,15 @@ function restoreKeystores()
     fi
 }
 
+function checkForEncryptedBackup()
+{
+    local appSign="$1"
+    if [ $(find $appSign/ -name '*.enc' | wc -l) -gt 0 ] ; then
+        G_DO_ENCRYPT_DECRYPT=true
+        checkIfPwPresent
+    fi
+}
+
 einfo "## Installing apps"
 
 matchApp
@@ -353,6 +362,8 @@ edebug "APPS=$APPS"
 
 for appSign in $APPS; do
 	edebug "appSign=$appSign"
+        checkForEncryptedBackup "${appSign}"
+
         appPackage="$(getAppFileName "${appSign}")"
         metaPackage="$(getMetaFileName "${appPackage}")"
 
@@ -361,6 +372,7 @@ for appSign in $APPS; do
         if test -e "$metaPackage" ; then
             installer=$(getMetaAttr "installer" "$metaPackage")
         fi
+
         #####################
         # restore app
         #####################
@@ -368,7 +380,7 @@ for appSign in $APPS; do
         if $DO_ACTION_APK ; then
             if test -e "$appPackage" ; then
 
-	        APP=`tar xvfz $appPackage -C /tmp/ --wildcards "*.apk" | sed 's/\.\///'`
+	        APP=`cat "$appPackage" | decryptIfNeeded | tar xvzf - -C /tmp/ --wildcards "*.apk" | sed 's/\.\///'`
                 einfo "[$appSign]: restoring apk(s): $APP "
 	        edebug "[$appSign]: appPackage=$appPackage"
 	        edebug "[$appSign]: Installing: APP=$APP"
@@ -433,7 +445,7 @@ for appSign in $APPS; do
         if $DO_ACTION_DATA ; then
             if test -e "$dataPackage" ; then
                 einfo "[$appSign]: restoring app data"
-	        $DO_IT && cat "$dataPackage" | pv -trab | $AS "$TAR -xzpf - -C $appDataDir"
+	        $DO_IT && cat "$dataPackage" | decryptIfNeeded | pv -trab | $AS "$TAR -xzpf - -C $appDataDir"
 
                 ####
                 # fix lib symlink

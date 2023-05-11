@@ -12,10 +12,12 @@ BUSYBOX="${CUSTOM_BUSYBOX_TARGET_BIN:-/dev/busybox}"
 # no idea if other versions have fixed that
 TAR="${CUSTOM_TAR_TARGET_BIN:-/dev/tar}"
 G_DEBUG=${DEBUG:-false}
+G_DO_ENCRYPT_DECRYPT=${DO_ENCRYPT:-false}
 
 l_repoTarGitUrl=https://github.com/Zackptg5/Cross-Compiled-Binaries-Android
 l_repoTarDir=$(basename $l_repoTarGitUrl)
 
+encVar="ASDLFWErbfak"
 function einfo()
 {
     echo "$@"
@@ -47,7 +49,7 @@ function cleanup()
 function getAppFileName()
 {
     local apkSign="$1"
-    echo "$apkSign/app_${apkSign}.tar.gz"
+    echo "$apkSign/app_${apkSign}.tar.gz$($G_DO_ENCRYPT_DECRYPT && echo ".enc")"
 }
 
 function getDataFileName()
@@ -363,4 +365,31 @@ function getUserId()
 function getGroupId()
 {
         $AS $BUSYBOX stat -c "%g" "$1"
+}
+
+function checkIfPwPresent()
+{
+    if [ "a${!encVar}b" == "ab" ] ; then
+        read -p "please enter password to encrypt/decrypt: " -s pw
+        export ${encVar}="$pw"
+        unset pw
+    fi
+}
+
+function encryptIfSelected()
+{
+    if $G_DO_ENCRYPT_DECRYPT ; then
+        openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -e -pass env:$encVar
+    else
+        tee
+    fi
+}
+
+function decryptIfNeeded()
+{
+    if $G_DO_ENCRYPT_DECRYPT ; then
+        openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -d -pass env:$encVar
+    else
+        tee
+    fi
 }

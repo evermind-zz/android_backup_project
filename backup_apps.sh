@@ -18,6 +18,7 @@ DO_ACTION_EXT_DATA=true
 DO_ACTION_KEYSTORE=true
 DO_ACTION_PERMISSIONS=true
 DO_ACTION_EXT_DATA_SDCARD=false
+DO_ENCRYPT=false
 HAS_CUSTOM_BACKUP_DIR=false
 USE_BUSYBOX_SELINUX_VARIANT=""
 
@@ -31,6 +32,9 @@ while [ $argCount -gt 0 ] ; do
     elif [[ "$1" == "--debug" ]]; then
         shift; let argCount-=1
         DEBUG=true
+    elif [[ "$1" == "--encrypt" ]]; then
+        shift; let argCount-=1
+        DO_ENCRYPT=true
     elif [[ "$1" == "--local" ]]; then
         IS_LOCAL=true
         AS=sudo
@@ -186,6 +190,10 @@ DATA_PATTERN="/data/app"
 PATTERN=$DATA_PATTERN
 if [[ "$SYSTEM_PATTERN" != "" ]]; then PATTERN="$SYSTEM_PATTERN}\|$DATA_PATTERN" ; fi
 
+if $DO_ENCRYPT ; then
+    checkIfPwPresent
+fi
+
 for APP in `matchApp`; do
 	echo $APP
 
@@ -217,7 +225,7 @@ for APP in `matchApp`; do
                 #####################
                 if $DO_ACTION_APK ; then
                     einfo "[$appSign]: backup apk(s): $APP "
-		    $AS $TAR -C $DATA_PATH/$appDir -czpf - ./ 2>/dev/null | pv -trabi 1 > "$appPackage"
+		    $AS $TAR -C $DATA_PATH/$appDir -czpf - ./ 2>/dev/null | pv -trabi 1 | encryptIfSelected > "$appPackage"
                 else
                     einfo "[$appSign]: SKIP backup apk(s) -- as requested via commandline"
                 fi
@@ -227,7 +235,7 @@ for APP in `matchApp`; do
                 #####################
                 if $DO_ACTION_DATA ; then
                     einfo "[$appSign]: backup app data"
-		    $AS $TAR -C $DATA_PATH/data/$dataDir -czpf - ./ 2>/dev/null | pv -trabi 1 > "$(getDataFileName "${appPackage}")"
+		    $AS $TAR -C $DATA_PATH/data/$dataDir -czpf - ./ 2>/dev/null | pv -trabi 1 | encryptIfSelected > "$(getDataFileName "${appPackage}")"
                 else
                     einfo "[$appSign]: SKIP backup app data -- as requested via commandline"
                 fi
@@ -247,7 +255,7 @@ for APP in `matchApp`; do
                     # check if there are any $USERID matches at all
                     if [ `$BUSYBOX stat -c %s $keystoreForAppList` -gt 0 ] ; then
                         einfo "[$appSign]: backup keystores"
-                        $AS $TAR -C $keystorePath -czpf - -T "$keystoreForAppList" 2>/dev/null | pv -trabi 1 > "$(getKeystoreFileName "${appPackage}")"
+                        $AS $TAR -C $keystorePath -czpf - -T "$keystoreForAppList" 2>/dev/null | pv -trabi 1 | encryptIfSelected > "$(getKeystoreFileName "${appPackage}")"
                     else
                         einfo "[$appSign]: SKIP backup keystores -- no keystores for this app"
                     fi
@@ -263,7 +271,7 @@ for APP in `matchApp`; do
                     extraDataPath="$DATA_PATH/media/0/Android/data/${dataDir}"
                     if doesDirHaveFiles "$extraDataPath" ; then
                         einfo "[$appSign]: backup app extra data"
-		        $AS $TAR -C $extraDataPath -czpf - ./ 2>/dev/null | pv -trabi 1 > "$(getExtraDataFileName "${appPackage}")"
+		        $AS $TAR -C $extraDataPath -czpf - ./ 2>/dev/null | pv -trabi 1 | encryptIfSelected > "$(getExtraDataFileName "${appPackage}")"
                     else
                         einfo "[$appSign]: NOT backup app extra data -- no files to backup"
                     fi
@@ -279,18 +287,18 @@ for APP in `matchApp`; do
                         if doesDirHaveFiles "$extraDataPath" ; then
                             sdcardId="$(basename "$sdcardExtraData")"
                             extraDataFileName="$(getExtraDataFileName "${appPackage}" | sed -e "s@\(.tar.gz\)@${sdcardId}\1@g")"
-		            $AS $TAR -C $extraDataPath -czpf - ./ 2>/dev/null | pv -trabi 1 > "$extraDataFileName"
+		            $AS $TAR -C $extraDataPath -czpf - ./ 2>/dev/null | pv -trabi 1 | encryptIfSelected > "$extraDataFileName"
                         fi
                     done
                 fi
 
                 if $DO_ACTION_PERMISSIONS ; then
-                    getPermsXmlData "$dataDir" > $(getPermFileName "${appPackage}")
+                    getPermsXmlData "$dataDir" | encryptIfSelected > $(getPermFileName "${appPackage}")
                 fi
 
                 ############
                 # backup meta data
-                getMetaXmlData "$dataDir" > $(getMetaFileName "${appPackage}")
+                getMetaXmlData "$dataDir" | encryptIfSelected > $(getMetaFileName "${appPackage}")
 
 
 
