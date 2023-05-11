@@ -379,10 +379,36 @@ function getGroupId()
         $AS $BUSYBOX stat -c "%g" "$1"
 }
 
+function l_verifyPwd()
+{
+    local pw="$1"
+    local doVerify=$2
+    local pw2=""
+
+    if [ "a${pw}b" == "ab" ] ; then
+        eerror -e "Empty password is not allowed. Retry."
+        exit 4
+    fi
+
+    if $doVerify ; then
+        read -p "Verify your password to encrypt: " -s pw2
+        echo # new line
+        if [ "a${pw}b" != "a${pw2}b" ] ; then
+            eerror "Your password does not match. Retry."
+            exit 4
+        fi
+    fi
+}
+
 function checkIfPwPresent()
 {
+    local doVerify=${1:-false}
+    local pw=""
+
     if [ "a${!encPwd}b" == "ab" ] ; then
-        read -p "please enter password to encrypt/decrypt: " -s pw
+        read -p "Please enter password to encrypt/decrypt: " -s pw
+        echo # new line
+        l_verifyPwd "$pw" $doVerify 
         export ${encPwd}="$pw"
         unset pw
         echo

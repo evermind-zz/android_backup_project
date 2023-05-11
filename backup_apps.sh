@@ -198,7 +198,7 @@ PATTERN=$DATA_PATTERN
 if [[ "$SYSTEM_PATTERN" != "" ]]; then PATTERN="$SYSTEM_PATTERN}\|$DATA_PATTERN" ; fi
 
 if $DO_ENCRYPT ; then
-    checkIfPwPresent
+    checkIfPwPresent true
 fi
 
 globalmetadataFile=$(getGlobalMetaDataFileName)
