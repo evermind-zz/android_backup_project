@@ -26,6 +26,7 @@ DO_ACTION_DATA=true
 DO_ACTION_EXT_DATA=true
 DO_ACTION_KEYSTORE=true
 DO_ACTION_PERMISSIONS=true
+DO_UPDATE_TOOLS=false
 
 
 argCount=${#@}
@@ -56,6 +57,9 @@ while [ $argCount -gt 0 ] ; do
     elif [[ "$1" == "--no-perms" ]]; then
         shift; let argCount-=1
         DO_ACTION_PERMISSIONS=false
+    elif [[ "$1" == "--update-tools" ]]; then
+        shift; let argCount-=1
+        DO_UPDATE_TOOLS=true
     elif [[ "$1" == "--data-path" ]]; then
         #CUSTOM_BUSYBOX_TARGET_BIN=/tmp/busybox
         shift; let argCount-=1
@@ -106,8 +110,8 @@ OLDIFS="$IFS"
 checkPrerequisites
 
 if $DO_IT ; then
-    updateBusybox
-    updateTarBinary
+    updateBusybox "$DO_UPDATE_TOOLS"
+    updateTarBinary "$DO_UPDATE_TOOLS"
 
     lookForAdbDevice
 

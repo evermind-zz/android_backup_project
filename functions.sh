@@ -346,12 +346,14 @@ function startRuntime()
 
 function updateTarBinary()
 {
+    local doForceUpdate=${1:-false}
+
     if [ ! -d "$l_repoTarDir" ]; then
         git clone --depth 1 --filter=blob:none --sparse "$l_repoTarGitUrl"
         pushd "$l_repoTarDir" &> /dev/null
         git sparse-checkout set tar
         popd &> /dev/null
-    else
+    elif $doForceUpdate ; then
         pushd "$l_repoTarDir" &> /dev/null
         git pull
         popd &> /dev/null
@@ -360,13 +362,14 @@ function updateTarBinary()
 
 function updateBusybox()
 {
-	if [ ! -d busybox-ndk ]; then
-		git clone https://github.com/Magisk-Modules-Repo/busybox-ndk
-	else
-		pushd busybox-ndk &> /dev/null
-		git pull
-		popd &> /dev/null
-	fi
+    local doForceUpdate=${1:-false}
+    if [ ! -d busybox-ndk ]; then
+        git clone https://github.com/Magisk-Modules-Repo/busybox-ndk
+    elif $doForceUpdate ; then
+        pushd busybox-ndk &> /dev/null
+        git pull
+        popd &> /dev/null
+    fi
 }
 
 function getUserId()

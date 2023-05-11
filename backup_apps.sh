@@ -18,6 +18,7 @@ DO_ACTION_EXT_DATA=true
 DO_ACTION_KEYSTORE=true
 DO_ACTION_PERMISSIONS=true
 DO_ACTION_EXT_DATA_SDCARD=false
+DO_UPDATE_TOOLS=false
 DO_ENCRYPT=false
 HAS_CUSTOM_BACKUP_DIR=false
 USE_BUSYBOX_SELINUX_VARIANT=""
@@ -65,6 +66,9 @@ while [ $argCount -gt 0 ] ; do
     elif [[ "$1" == "--ext-data-sdcard" ]]; then
         shift; let argCount-=1
         DO_ACTION_EXT_DATA_SDCARD=true
+    elif [[ "$1" == "--update-tools" ]]; then
+        shift; let argCount-=1
+        DO_UPDATE_TOOLS=true
     elif [[ "$1" == "--data-path" ]]; then
         shift; let argCount-=1
         DATA_PATH=$1
@@ -162,8 +166,8 @@ function doesDirHaveFiles()
 
 #checkPrerequisites
 
-updateBusybox
-updateTarBinary
+updateBusybox "$DO_UPDATE_TOOLS"
+updateTarBinary "$DO_UPDATE_TOOLS"
 
 #lookForAdbDevice
 
