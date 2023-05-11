@@ -17,7 +17,9 @@ G_DO_ENCRYPT_DECRYPT=${DO_ENCRYPT:-false}
 l_repoTarGitUrl=https://github.com/Zackptg5/Cross-Compiled-Binaries-Android
 l_repoTarDir=$(basename $l_repoTarGitUrl)
 
-encVar="ASDLFWErbfak"
+encPwd="ASDLFWErbfak"
+g_encExt=".enc"
+
 function einfo()
 {
     echo "$@"
@@ -46,10 +48,20 @@ function cleanup()
 	$AS rm "$TAR"
 }
 
+function getExtensionIfEncryptSelected()
+{
+    $G_DO_ENCRYPT_DECRYPT && echo "${g_encExt}"
+}
+
+function getGlobalMetaDataFileName()
+{
+    echo "global_meta.xml$(getExtensionIfEncryptSelected)"
+}
+
 function getAppFileName()
 {
     local apkSign="$1"
-    echo "$apkSign/app_${apkSign}.tar.gz$($G_DO_ENCRYPT_DECRYPT && echo ".enc")"
+    echo "$apkSign/app_${apkSign}.tar.gz$(getExtensionIfEncryptSelected)"
 }
 
 function getDataFileName()
@@ -369,17 +381,18 @@ function getGroupId()
 
 function checkIfPwPresent()
 {
-    if [ "a${!encVar}b" == "ab" ] ; then
+    if [ "a${!encPwd}b" == "ab" ] ; then
         read -p "please enter password to encrypt/decrypt: " -s pw
-        export ${encVar}="$pw"
+        export ${encPwd}="$pw"
         unset pw
+        echo
     fi
 }
 
 function encryptIfSelected()
 {
     if $G_DO_ENCRYPT_DECRYPT ; then
-        openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -e -pass env:$encVar
+        openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -e -pass env:$encPwd
     else
         tee
     fi
@@ -387,9 +400,37 @@ function encryptIfSelected()
 
 function decryptIfNeeded()
 {
-    if $G_DO_ENCRYPT_DECRYPT ; then
-        openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -d -pass env:$encVar
+    local forceDecrypt="${1:-ignore}" # values are: yes, ignore, no (no could be everything
+    if ($G_DO_ENCRYPT_DECRYPT && [ "a${forceDecrypt}b" == "aignoreb" ] ) || [ "a${forceDecrypt}b" == "ayesb" ]; then
+        openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -d -pass env:$encPwd
     else
         tee
     fi
+}
+
+function showGlobalBackupInfo()
+{
+    local globalmetadataFile=$(getGlobalMetaDataFileName)
+    local fileName=""
+
+    # determine if a global meta data file exists
+    # and if it is encrypted or not
+    if test -e ${globalmetadataFile/${g_encExt}/} ; then # not encrypted case
+        forceDecrypt="no"
+        fileName="${globalmetadataFile/${g_encExt}/}"
+    elif test -e "${globalmetadataFile/${g_encExt}/}${g_encExt}" ; then # look for encrypted
+        checkIfPwPresent
+        forceDecrypt="yes"
+        fileName="${globalmetadataFile/${g_encExt}/}${g_encExt}"
+    else
+        return
+    fi
+
+    local info="`cat "$fileName" | decryptIfNeeded "$forceDecrypt" | xmlstarlet sel -T -t -m "//packages/version"  -o sdkVersion= -v "@sdkVersion" -o "|fingerprint=" -v "@fingerprint" -o "|volumeUuid=" -v "@volumeUuid" -n`"
+    einfo "=>>==============="
+    einfo "Basic backup info"
+    einfo "=================="
+    einfo "$info"
+    einfo "=<<==============="
+    unset _decodeOrNot
 }

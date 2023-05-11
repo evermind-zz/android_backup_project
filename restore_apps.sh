@@ -354,6 +354,8 @@ function checkForEncryptedBackup()
     fi
 }
 
+showGlobalBackupInfo
+
 einfo "## Installing apps"
 
 matchApp

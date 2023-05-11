@@ -142,11 +142,11 @@ pushd "$BACKUP_DIR" &> /dev/null
 function getMetaXmlData()
 {
     local appSign="$1"
-    $AS cat $DATA_PATH/system/packages.xml |  xmlstarlet sel -t -c "` echo "/packages/package[@name = 'FOLLER']" | sed -e "s@FOLLER@$appSign@g"`"
+    $AS cat $DATA_PATH/system/packages.xml | xmlstarlet sel -t -c "` echo "/packages/package[@name = 'FOLLER']" | sed -e "s@FOLLER@$appSign@g"`"
 }
 
 if $IS_LOCAL ; then
-    PACKAGES=$(xmlstarlet select -T -t -m "//packages/package"  -v "@codePath" -o "|" -v "@name" -n $DATA_PATH/system/packages.xml)
+    PACKAGES=$($AS cat "$DATA_PATH/system/packages.xml" | xmlstarlet sel -T -t -m "//packages/package"  -v "@codePath" -o "|" -v "@name" -n)
 else
     PACKAGES=$($A shell "cmd package list packages -f")
 fi
@@ -174,7 +174,14 @@ function matchApp()
 function getPermsXmlData()
 {
     local appSign="$1"
-    $AS xmlstarlet sel -t -c "` echo "/runtime-permissions/pkg[@name = 'FOLLER']" | sed -e "s@FOLLER@$appSign@g"`" $DATA_PATH/system/users/0/runtime-permissions.xml
+    $AS cat "$DATA_PATH/system/users/0/runtime-permissions.xml" | xmlstarlet sel -t -c \
+        "` echo "/runtime-permissions/pkg[@name = 'FOLLER']" | sed -e "s@FOLLER@$appSign@g"`"
+}
+
+function getGlobalMetaData()
+{
+    $AS cat "$DATA_PATH/system/packages.xml" | xmlstarlet sel -t   -c "/packages/version" -n \
+        -c "/packages/permission-trees" -n -c "/packages/permissions" -n
 }
 
 function doesDirHaveFiles()
@@ -193,6 +200,13 @@ if [[ "$SYSTEM_PATTERN" != "" ]]; then PATTERN="$SYSTEM_PATTERN}\|$DATA_PATTERN"
 if $DO_ENCRYPT ; then
     checkIfPwPresent
 fi
+
+globalmetadataFile=$(getGlobalMetaDataFileName)
+if ! test -e ${globalmetadataFile} && ! test -e ${globalmetadataFile/${g_encExt}/} ; then
+    echo "<packages>`getGlobalMetaData`</packages>" | encryptIfSelected > $(getGlobalMetaDataFileName)
+fi
+
+showGlobalBackupInfo
 
 for APP in `matchApp`; do
 	echo $APP
