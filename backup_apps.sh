@@ -121,6 +121,7 @@ curr_dir="$(dirname "$0")"
 
 set -e   # fail early
 
+## BEGIN functions
 function getMetaXmlData()
 {
     local appSign="$1"
@@ -163,20 +164,12 @@ function doesDirHaveFiles()
     fi
     return 0
 }
+## END functions
 
 #checkPrerequisites
 
 updateBusybox "$DO_UPDATE_TOOLS"
 updateTarBinary "$DO_UPDATE_TOOLS"
-
-#lookForAdbDevice
-
-#checkRootType
-
-#checkForCleanData
-
-pushBusybox "$USE_BUSYBOX_SELINUX_VARIANT"
-pushTarBinary
 
 if ! $HAS_CUSTOM_BACKUP_DIR ; then
     einfo2 mkBackupDir
@@ -189,13 +182,15 @@ pushd "$BACKUP_DIR" &> /dev/null
 if $IS_LOCAL ; then
     PACKAGES=$($AS cat "$DATA_PATH/system/packages.xml" | xmlstarlet sel -T -t -m "//packages/package"  -v "@codePath" -o "|" -v "@name" -n)
 else
+    #lookForAdbDevice
+
+    #checkRootType
+
+    #checkForCleanData
     PACKAGES=$($A shell "cmd package list packages -f")
 fi
-#echo $PACKAGES
 
-#stopRuntime
-
-echo "## Pull apps"
+edebug "$PACKAGES"
 
 
 DATA_PATTERN="/data/app"
@@ -216,6 +211,18 @@ showGlobalBackupInfo
 matchApp
 APPS="$FNC_RETURN"
 edebug "APPS=$APPS"
+
+if [ ${#APPS} -gt 0 ] ; then
+    pushBusybox "$USE_BUSYBOX_SELINUX_VARIANT"
+    pushTarBinary
+fi
+
+if ! $IS_LOCAL ; then
+    #stopRuntime
+    echo -n
+fi
+
+einfo "## Pull apps"
 for APP in $APPS; do
 	echo $APP
 
@@ -234,7 +241,7 @@ for APP in $APPS; do
 
         if $IS_LOCAL ; then
                 appSign="${dataDir}"
-                if ! $AS test -e "${dataDir}" ; then
+                if ! test -e "${dataDir}" ; then
                     mkdir "${dataDir}" # dir per app
                 else
                     einfo "[$appSign]: SKIP backup -- a backup already exists in $BACKUP_DIR"
@@ -346,5 +353,8 @@ done
 
 cleanup
 
-#startRuntime
+if ! $IS_LOCAL ; then
+    #startRuntime
+    echo -n
+fi
 popd &> /dev/null
