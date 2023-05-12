@@ -253,8 +253,9 @@ for APP in $APPS; do
                 # backup app
                 #####################
                 if $DO_ACTION_APK ; then
+                    appDir=${appDir/\/data\//} # strip the data mount point here
                     einfo "[$appSign]: backup apk(s): $APP "
-		    $AS $TAR -C $DATA_PATH/$appDir -cpf - ./ 2>/dev/null | compressor | pv -trabi 1 | encryptIfSelected > "$appPackage"
+		    $AS $TAR -C $DATA_PATH/${appDir} -cpf - ./ 2>/dev/null | compressor | pv -trabi 1 | encryptIfSelected > "$appPackage"
                 else
                     einfo "[$appSign]: SKIP backup apk(s) -- as requested via commandline"
                 fi
