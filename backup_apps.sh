@@ -176,15 +176,12 @@ if ! $HAS_CUSTOM_BACKUP_DIR ; then
     #mkBackupDir
 fi
 
-mkdir -p "$BACKUP_DIR"
-pushd "$BACKUP_DIR" &> /dev/null
-
 if $IS_LOCAL ; then
     PACKAGES=$($AS cat "$DATA_PATH/system/packages.xml" | xmlstarlet sel -T -t -m "//packages/package"  -v "@codePath" -o "|" -v "@name" -n)
 else
-    #lookForAdbDevice
+    lookForAdbDevice
 
-    #checkRootType
+    checkRootType
 
     #checkForCleanData
     PACKAGES=$($A shell "cmd package list packages -f")
@@ -221,6 +218,9 @@ if ! $IS_LOCAL ; then
     #stopRuntime
     echo -n
 fi
+
+mkdir -p "$BACKUP_DIR"
+pushd "$BACKUP_DIR" &> /dev/null
 
 einfo "## Pull apps"
 for APP in $APPS; do
@@ -277,14 +277,12 @@ for APP in $APPS; do
                     USERID="`getUserId  $DATA_PATH/data/$dataDir`"
                     keystorePath=$DATA_PATH/misc/keystore/user_0
                     keystoreForAppList=/tmp/filelist.backup_apps.list
-                    olddir="$PWD"
-                    #cd $keystorePath && $BUSYBOX find | grep "${USERID}_" > $keystoreForAppList
-                    cd "$keystorePath" && $AS $BUSYBOX find -name "*${USERID}_*" > $keystoreForAppList
-                    cd "$olddir" &>/dev/null
-                    # check if there are any $USERID matches at all
-                    if [ `$BUSYBOX stat -c %s $keystoreForAppList` -gt 0 ] ; then
+
+                    $AS "$BUSYBOX find "$keystorePath" -name "*${USERID}_*"" | sed "s@${keystorePath}/@@g" > $keystoreForAppList
+                    noOfKeystores=`stat -c %s $keystoreForAppList`
+                    if [ $noOfKeystores -gt 0 ] ; then
                         einfo "[$appSign]: backup keystores"
-                        $AS $TAR -C $keystorePath -czpf - -T "$keystoreForAppList" 2>/dev/null | pv -trabi 1 | encryptIfSelected > "$(getKeystoreFileName "${appPackage}")"
+                        cat "$keystoreForAppList" | $AS $TAR -C "$keystorePath" --verbatim-files-from -T- -cpf - 2>/dev/null | gzip | pv -trabi 1 | encryptIfSelected > "$(getKeystoreFileName "${appPackage}")"
                     else
                         einfo "[$appSign]: SKIP backup keystores -- no keystores for this app"
                     fi
@@ -357,4 +355,4 @@ if ! $IS_LOCAL ; then
     #startRuntime
     echo -n
 fi
-popd &> /dev/null
+popd &> /dev/null # -> $BACKUP_DIR
