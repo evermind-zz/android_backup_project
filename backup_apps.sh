@@ -254,7 +254,7 @@ for APP in $APPS; do
                 #####################
                 if $DO_ACTION_APK ; then
                     einfo "[$appSign]: backup apk(s): $APP "
-		    $AS $TAR -C $DATA_PATH/$appDir -czpf - ./ 2>/dev/null | pv -trabi 1 | encryptIfSelected > "$appPackage"
+		    $AS $TAR -C $DATA_PATH/$appDir -cpf - ./ 2>/dev/null | compressor | pv -trabi 1 | encryptIfSelected > "$appPackage"
                 else
                     einfo "[$appSign]: SKIP backup apk(s) -- as requested via commandline"
                 fi
@@ -264,7 +264,7 @@ for APP in $APPS; do
                 #####################
                 if $DO_ACTION_DATA ; then
                     einfo "[$appSign]: backup app data"
-		    $AS $TAR -C $DATA_PATH/data/$dataDir -czpf - ./ 2>/dev/null | pv -trabi 1 | encryptIfSelected > "$(getDataFileName "${appPackage}")"
+		    $AS $TAR -C $DATA_PATH/data/$dataDir -cpf - ./ 2>/dev/null | compressor | pv -trabi 1 | encryptIfSelected > "$(getDataFileName "${appPackage}")"
                 else
                     einfo "[$appSign]: SKIP backup app data -- as requested via commandline"
                 fi
@@ -298,7 +298,7 @@ for APP in $APPS; do
                     extraDataPath="$DATA_PATH/media/0/Android/data/${dataDir}"
                     if doesDirHaveFiles "$extraDataPath" ; then
                         einfo "[$appSign]: backup app extra data"
-		        $AS $TAR -C $extraDataPath -czpf - ./ 2>/dev/null | pv -trabi 1 | encryptIfSelected > "$(getExtraDataFileName "${appPackage}")"
+		        $AS $TAR -C $extraDataPath -cpf - ./ 2>/dev/null | compressor | pv -trabi 1 | encryptIfSelected > "$(getExtraDataFileName "${appPackage}")"
                     else
                         einfo "[$appSign]: NOT backup app extra data -- no files to backup"
                     fi
@@ -314,7 +314,7 @@ for APP in $APPS; do
                         if doesDirHaveFiles "$extraDataPath" ; then
                             sdcardId="$(basename "$sdcardExtraData")"
                             extraDataFileName="$(getExtraDataFileName "${appPackage}" | sed -e "s@\(.tar.gz\)@${sdcardId}\1@g")"
-		            $AS $TAR -C $extraDataPath -czpf - ./ 2>/dev/null | pv -trabi 1 | encryptIfSelected > "$extraDataFileName"
+		            $AS $TAR -C $extraDataPath -cpf - ./ 2>/dev/null | compressor | pv -trabi 1 | encryptIfSelected > "$extraDataFileName"
                         fi
                     done
                 fi

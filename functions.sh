@@ -14,6 +14,10 @@ TAR="${CUSTOM_TAR_TARGET_BIN:-/dev/tar}"
 G_DEBUG=${DEBUG:-false}
 G_DO_ENCRYPT_DECRYPT=${DO_ENCRYPT:-false}
 
+G_COMPRESS_BINARY=gzip
+G_COMPRESS_BINARY_DECOMPRESS_OPTS=-d
+G_COMPRESS_BINARY_COMPRESS_OPTS=""
+
 l_repoTarGitUrl=https://github.com/Zackptg5/Cross-Compiled-Binaries-Android
 l_repoTarDir=$(basename $l_repoTarGitUrl)
 
@@ -462,4 +466,12 @@ function showGlobalBackupInfo()
     einfo "$info"
     einfo "=<<==============="
     unset _decodeOrNot
+}
+
+function compressor() {
+    "$G_COMPRESS_BINARY" $G_COMPRESS_BINARY_COMPRESS_OPTS
+}
+
+function decompressor() {
+    "$G_COMPRESS_BINARY" $G_COMPRESS_BINARY_DECOMPRESS_OPTS
 }

@@ -311,7 +311,7 @@ function restoreExtraData()
 
             if $DO_IT ; then
                 $AS "$BUSYBOX mkdir -p "$extraDataPath""
-                cat "$extraDataPackage" | decryptIfNeeded | pv -trab | $AS "$TAR -xzpf - -C "$extraDataPath""
+                cat "$extraDataPackage" | decryptIfNeeded | decompressor | pv -trab | $AS "$TAR -xpf - -C "$extraDataPath""
 IFS="
 "
                 createExtDataPermUpdateScript "$extraDataPath" "$oldGid" "$newGid" | eval $AS "$BUSYBOX tee "$fix_extra_perms_script""
@@ -337,7 +337,7 @@ function restoreKeystores()
 
             if $DO_IT ; then
                 keystoreTmpDir="`$AS $BUSYBOX mktemp -d`"
-                cat "$keystorePackage" | decryptIfNeeded | pv -trab | $AS "$TAR -xzpf - -C "$keystoreTmpDir""
+                cat "$keystorePackage" | decryptIfNeeded | decompressor | pv -trab | $AS "$TAR -xpf - -C "$keystoreTmpDir""
                 restoreKeystore "$keystoreTmpDir" "$oldUid" "$newUid" "$keystorePath"
                 $AS "$BUSYBOX rmdir "$keystoreTmpDir""
             fi
@@ -450,7 +450,7 @@ for appSign in $APPS; do
         if $DO_ACTION_DATA ; then
             if test -e "$dataPackage" ; then
                 einfo "[$appSign]: restoring app data"
-	        $DO_IT && cat "$dataPackage" | decryptIfNeeded | pv -trab | $AS "$TAR -xzpf - -C $appDataDir"
+	        $DO_IT && cat "$dataPackage" | decryptIfNeeded | decompressor | pv -trab | $AS "$TAR -xpf - -C $appDataDir"
 
                 ####
                 # fix lib symlink
