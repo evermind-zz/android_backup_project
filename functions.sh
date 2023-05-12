@@ -456,7 +456,7 @@ function showGlobalBackupInfo()
         forceDecrypt="yes"
         fileName="${globalmetadataFile/${g_encExt}/}${g_encExt}"
     else
-        return
+        return 0 # we need that here as 'set -e' will terminate everything that is returning 0 and not evaluating return
     fi
 
     local info="`cat "$fileName" | decryptIfNeeded "$forceDecrypt" | xmlstarlet sel -T -t -m "//packages/version"  -o sdkVersion= -v "@sdkVersion" -o "|fingerprint=" -v "@fingerprint" -o "|volumeUuid=" -v "@volumeUuid" -n`"

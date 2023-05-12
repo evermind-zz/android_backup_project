@@ -156,7 +156,7 @@ function createDataPermUpdateScript() {
     eval $AS "$BUSYBOX find $workDir ! -type l -exec $BUSYBOX stat -c \"chownPATTERNOLDU=%u:OLDG=%gPATTERNBEGINrogaPATTERN%nPATTERNENDrogaPATTERN\" {} +" \
     | while read line ; do
         line="`echo "$line" | sed -e 's@PATTERN@ @g' -e 's@\"@\\\\"@g' -e 's@BEGINroga @"@g' -e 's@ ENDroga @"@g'`"
-        echo "oldOwner $line" | sed -e 's@OLDU=@@g' -e 's@OLDG=@@g' | sed 's@^@# @'
+        edebug "oldOwner $line" | sed -e 's@OLDU=@@g' -e 's@OLDG=@@g' | sed 's@^@# @'
         OLDU=`echo "$line" | egrep -o 'OLDU=[^:]*' | sed -e 's@OLDU=@@g'`
         OLDG=`echo "$line" | egrep -o 'OLDG=[^ ]*' | sed -e 's@OLDG=@@g'`
         edebug "OLDU=$OLDU OLDG=$OLDG"
@@ -205,7 +205,7 @@ function createExtDataPermUpdateScript() {
     eval $AS "$BUSYBOX find $workDir ! -type l -exec $BUSYBOX stat -c \"chownPATTERNOLDU=%u:OLDG=%gPATTERNBEGINrogaPATTERN%nPATTERNENDrogaPATTERN\" {} +" \
     | while read line ; do
         line="`echo "$line" | sed -e 's@PATTERN@ @g' -e 's@\"@\\\\"@g' -e 's@BEGINroga @"@g' -e 's@ ENDroga @"@g'`"
-        echo "oldOwner $line" | sed -e 's@OLDU=@@g' -e 's@OLDG=@@g' | sed 's@^@# @'
+        edebug "oldOwner $line" | sed -e 's@OLDU=@@g' -e 's@OLDG=@@g' | sed 's@^@# @'
         OLDU=`echo "$line" | egrep -o 'OLDU=[^:]*' | sed -e 's@OLDU=@@g'`
         OLDG=`echo "$line" | egrep -o 'OLDG=[^ ]*' | sed -e 's@OLDG=@@g'`
         edebug "OLDU=$OLDU OLDG=$OLDG"

@@ -198,13 +198,6 @@ if $DO_ENCRYPT ; then
     checkIfPwPresent true
 fi
 
-globalmetadataFile=$(getGlobalMetaDataFileName)
-if ! test -e ${globalmetadataFile} && ! test -e ${globalmetadataFile/${g_encExt}/} ; then
-    echo "<packages>`getGlobalMetaData`</packages>" | encryptIfSelected > $(getGlobalMetaDataFileName)
-fi
-
-showGlobalBackupInfo
-
 matchApp
 APPS="$FNC_RETURN"
 edebug "APPS=$APPS"
@@ -214,13 +207,21 @@ if [ ${#APPS} -gt 0 ] ; then
     pushTarBinary
 fi
 
+
+mkdir -p "$BACKUP_DIR"
+pushd "$BACKUP_DIR" &> /dev/null
+
+globalmetadataFile=$(getGlobalMetaDataFileName)
+if ! test -e ${globalmetadataFile} && ! test -e ${globalmetadataFile/${g_encExt}/} ; then
+    echo "<packages>`getGlobalMetaData`</packages>" | encryptIfSelected > $(getGlobalMetaDataFileName)
+fi
+
+showGlobalBackupInfo
+
 if ! $IS_LOCAL ; then
     #stopRuntime
     echo -n
 fi
-
-mkdir -p "$BACKUP_DIR"
-pushd "$BACKUP_DIR" &> /dev/null
 
 einfo "## Pull apps"
 for APP in $APPS; do
