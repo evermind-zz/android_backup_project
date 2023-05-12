@@ -224,130 +224,108 @@ pushd "$BACKUP_DIR" &> /dev/null
 
 einfo "## Pull apps"
 for APP in $APPS; do
-	echo $APP
+    echo $APP
 
-        if $IS_LOCAL ; then
-           appDir="$(echo $APP | awk -F'|' '{print $1}' | sed 's@/data@@')"
-           dataDir="$(echo $APP | awk -F'|' '{print $2}')"
+    if $IS_LOCAL ; then
+       appDir="$(echo $APP | awk -F'|' '{print $1}' | sed 's@/data@@')"
+       dataDir="$(echo $APP | awk -F'|' '{print $2}')"
+    else
+        appPath=`echo $APP | sed 's/package://' | rev | cut -d "=" -f2- | rev`
+        appDir=${appPath%/*}
+        dataDir=`echo $APP | sed 's/package://' | rev | cut -d "=" -f1 | rev`
+    fi
+
+    edebug appPath=$appPath
+    edebug appDir=$appDir
+    edebug dataDir=$dataDir
+
+    appSign="${dataDir}"
+    if ! test -e "${dataDir}" ; then
+        mkdir "${dataDir}" # dir per app
+    else
+        einfo "[$appSign]: SKIP backup -- a backup already exists in $BACKUP_DIR"
+        continue
+    fi
+    appPackage="$(getAppFileName "${dataDir}")"
+
+    #####################
+    # backup app
+    #####################
+    if $DO_ACTION_APK ; then
+        appDir=${appDir/\/data\//} # strip the data mount point here
+        einfo "[$appSign]: backup apk(s): $APP "
+        $AS $TAR -C $DATA_PATH/${appDir} -cpf - ./ 2>/dev/null | compressor | pv -trabi 1 | encryptIfSelected > "$appPackage"
+    else
+        einfo "[$appSign]: SKIP backup apk(s) -- as requested via commandline"
+    fi
+
+    #####################
+    # backup app data
+    #####################
+    if $DO_ACTION_DATA ; then
+        einfo "[$appSign]: backup app data"
+        $AS $TAR -C $DATA_PATH/data/$dataDir -cpf - ./ 2>/dev/null | compressor | pv -trabi 1 | encryptIfSelected > "$(getDataFileName "${appPackage}")"
+    else
+        einfo "[$appSign]: SKIP backup app data -- as requested via commandline"
+    fi
+
+    #####################
+    # backup keystore(s)
+    #####################
+    if $DO_ACTION_KEYSTORE ; then
+        # get keystore if exists
+        USERID="`getUserId  $DATA_PATH/data/$dataDir`"
+        keystorePath=$DATA_PATH/misc/keystore/user_0
+        keystoreForAppList=/tmp/filelist.backup_apps.list
+
+        $AS "$BUSYBOX find "$keystorePath" -name "*${USERID}_*"" | sed "s@${keystorePath}/@@g" > $keystoreForAppList
+        noOfKeystores=`stat -c %s $keystoreForAppList`
+        if [ $noOfKeystores -gt 0 ] ; then
+            einfo "[$appSign]: backup keystores"
+            cat "$keystoreForAppList" | $AS $TAR -C "$keystorePath" --verbatim-files-from -T- -cpf - 2>/dev/null | gzip | pv -trabi 1 | encryptIfSelected > "$(getKeystoreFileName "${appPackage}")"
         else
-	    appPath=`echo $APP | sed 's/package://' | rev | cut -d "=" -f2- | rev`
-	    appDir=${appPath%/*}
-	    dataDir=`echo $APP | sed 's/package://' | rev | cut -d "=" -f1 | rev`
+            einfo "[$appSign]: SKIP backup keystores -- no keystores for this app"
         fi
+        rm $keystoreForAppList
+    else
+        einfo "[$appSign]: SKIP backup keystores -- as requested via commandline"
+    fi
 
-	edebug appPath=$appPath
-	edebug appDir=$appDir
-	edebug dataDir=$dataDir
+    #####################
+    # backup app extra data
+    #####################
+    if $DO_ACTION_EXT_DATA ; then
+        extraDataPath="$DATA_PATH/media/0/Android/data/${dataDir}"
+        if doesDirHaveFiles "$extraDataPath" ; then
+            einfo "[$appSign]: backup app extra data"
+            $AS $TAR -C $extraDataPath -cpf - ./ 2>/dev/null | compressor | pv -trabi 1 | encryptIfSelected > "$(getExtraDataFileName "${appPackage}")"
+        else
+            einfo "[$appSign]: NOT backup app extra data -- no files to backup"
+        fi
+    else
+        einfo "[$appSign]: SKIP backup app extra data -- as requested via commandline"
+    fi
 
-        if $IS_LOCAL ; then
-                appSign="${dataDir}"
-                if ! test -e "${dataDir}" ; then
-                    mkdir "${dataDir}" # dir per app
-                else
-                    einfo "[$appSign]: SKIP backup -- a backup already exists in $BACKUP_DIR"
-                    continue
-                fi
-                appPackage="$(getAppFileName "${dataDir}")"
+    ## at the moment this is not working on local
+    if $DO_ACTION_EXT_DATA_SDCARD ; then
+        for sdcardExtraData in $($AS 'ls -d /mnt/media_rw/*') ; do
 
-                #####################
-                # backup app
-                #####################
-                if $DO_ACTION_APK ; then
-                    appDir=${appDir/\/data\//} # strip the data mount point here
-                    einfo "[$appSign]: backup apk(s): $APP "
-		    $AS $TAR -C $DATA_PATH/${appDir} -cpf - ./ 2>/dev/null | compressor | pv -trabi 1 | encryptIfSelected > "$appPackage"
-                else
-                    einfo "[$appSign]: SKIP backup apk(s) -- as requested via commandline"
-                fi
+            extraDataPath="$sdcardExtraData/Android/data/${dataDir}"
+            if doesDirHaveFiles "$extraDataPath" ; then
+                sdcardId="$(basename "$sdcardExtraData")"
+                extraDataFileName="$(getExtraDataFileName "${appPackage}" | sed -e "s@\(.tar.gz\)@${sdcardId}\1@g")"
+                $AS $TAR -C $extraDataPath -cpf - ./ 2>/dev/null | compressor | pv -trabi 1 | encryptIfSelected > "$extraDataFileName"
+            fi
+        done
+    fi
 
-                #####################
-                # backup app data
-                #####################
-                if $DO_ACTION_DATA ; then
-                    einfo "[$appSign]: backup app data"
-		    $AS $TAR -C $DATA_PATH/data/$dataDir -cpf - ./ 2>/dev/null | compressor | pv -trabi 1 | encryptIfSelected > "$(getDataFileName "${appPackage}")"
-                else
-                    einfo "[$appSign]: SKIP backup app data -- as requested via commandline"
-                fi
+    if $DO_ACTION_PERMISSIONS ; then
+        getPermsXmlData "$dataDir" | encryptIfSelected > $(getPermFileName "${appPackage}")
+    fi
 
-                #####################
-                # backup keystore(s)
-                #####################
-                if $DO_ACTION_KEYSTORE ; then
-                    # get keystore if exists
-                    USERID="`getUserId  $DATA_PATH/data/$dataDir`"
-                    keystorePath=$DATA_PATH/misc/keystore/user_0
-                    keystoreForAppList=/tmp/filelist.backup_apps.list
-
-                    $AS "$BUSYBOX find "$keystorePath" -name "*${USERID}_*"" | sed "s@${keystorePath}/@@g" > $keystoreForAppList
-                    noOfKeystores=`stat -c %s $keystoreForAppList`
-                    if [ $noOfKeystores -gt 0 ] ; then
-                        einfo "[$appSign]: backup keystores"
-                        cat "$keystoreForAppList" | $AS $TAR -C "$keystorePath" --verbatim-files-from -T- -cpf - 2>/dev/null | gzip | pv -trabi 1 | encryptIfSelected > "$(getKeystoreFileName "${appPackage}")"
-                    else
-                        einfo "[$appSign]: SKIP backup keystores -- no keystores for this app"
-                    fi
-                    rm $keystoreForAppList
-                else
-                    einfo "[$appSign]: SKIP backup keystores -- as requested via commandline"
-                fi
-
-                #####################
-                # backup app extra data
-                #####################
-                if $DO_ACTION_EXT_DATA ; then
-                    extraDataPath="$DATA_PATH/media/0/Android/data/${dataDir}"
-                    if doesDirHaveFiles "$extraDataPath" ; then
-                        einfo "[$appSign]: backup app extra data"
-		        $AS $TAR -C $extraDataPath -cpf - ./ 2>/dev/null | compressor | pv -trabi 1 | encryptIfSelected > "$(getExtraDataFileName "${appPackage}")"
-                    else
-                        einfo "[$appSign]: NOT backup app extra data -- no files to backup"
-                    fi
-                else
-                    einfo "[$appSign]: SKIP backup app extra data -- as requested via commandline"
-                fi
-
-                ## at the moment this is not working on local
-                if $DO_ACTION_EXT_DATA_SDCARD ; then
-                    for sdcardExtraData in $($AS 'ls -d /mnt/media_rw/*') ; do
-
-                        extraDataPath="$sdcardExtraData/Android/data/${dataDir}"
-                        if doesDirHaveFiles "$extraDataPath" ; then
-                            sdcardId="$(basename "$sdcardExtraData")"
-                            extraDataFileName="$(getExtraDataFileName "${appPackage}" | sed -e "s@\(.tar.gz\)@${sdcardId}\1@g")"
-		            $AS $TAR -C $extraDataPath -cpf - ./ 2>/dev/null | compressor | pv -trabi 1 | encryptIfSelected > "$extraDataFileName"
-                        fi
-                    done
-                fi
-
-                if $DO_ACTION_PERMISSIONS ; then
-                    getPermsXmlData "$dataDir" | encryptIfSelected > $(getPermFileName "${appPackage}")
-                fi
-
-                ############
-                # backup meta data
-                getMetaXmlData "$dataDir" | encryptIfSelected > $(getMetaFileName "${appPackage}")
-
-
-
-        elif [[ "$AS" == "$AROOT" ]]; then
-#
-# --- version for adb insecure
-#
-       		echo "$AS "$BUSYBOX tar -cv -C $appDir . 2>/dev/null | gzip" | gzip -d | pv -trabi 1 | gzip -c9 > app_${dataDir}.tar.gz"
-       		echo "$AS "$BUSYBOX tar -cv -C $DATA_PATH/data/$dataDir . 2>/dev/null | gzip" | gzip -d | pv -trabi 1 | gzip -c9 > data_${dataDir}.tar.gz"
-	else
-#
-# --- version for magisk rooted
-#
-		echo $AS "'cd $appDir && $BUSYBOX tar czf - ./' 2>/dev/null" | pv -trabi 1 > app_${dataDir}.tar.gz
-		echo $AS "'cd $DATA_PATH/data/$dataDir && $BUSYBOX tar czf - ./' 2>/dev/null" | pv -trabi 1 > data_${dataDir}.tar.gz
-
-                echo appDir=$appDir appTar=app_${dataDir}.tar.gz
-                echo appData=$DATA_PATH/data/$dataDir dataTar= data_${dataDir}.tar.gz
-                USERID="`getUserId  $DATA_PATH/data/$dataDir`"
-                echo $USERID
-	fi
+    ############
+    # backup meta data
+    getMetaXmlData "$dataDir" | encryptIfSelected > $(getMetaFileName "${appPackage}")
 done
 
 cleanup
