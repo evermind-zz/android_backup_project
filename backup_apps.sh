@@ -160,7 +160,7 @@ function getGlobalMetaData()
 function doesDirHaveFiles()
 {
     local path="$1"
-    if [ `find "$path" ! -type d 2>/dev/null | wc -l` -eq 0 ] ; then
+    if [ `$AS $BUSYBOX find "$path" ! -type d 2>/dev/null | wc -l` -eq 0 ] ; then
         return 1
     fi
     return 0
