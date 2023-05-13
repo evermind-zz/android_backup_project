@@ -23,6 +23,31 @@ DO_BACKUP_SYSTEM_APPS=false
 HAS_CUSTOM_BACKUP_DIR=false
 USE_BUSYBOX_SELINUX_VARIANT=""
 
+curr_dir="$(dirname "$0")"
+. "$curr_dir/lib/functions_options.sh"
+
+function displayHelp()
+{
+    echo
+    echo "$0 is a script to backup apks, data, external data, keystores, permissions and external app related data from sdcard. For more information have a look at this help."
+    echo
+    for x in --backup-dir --data-path --debug --encrypt --ext-data-sdcard --local --matching-apps --no-apk --no-data --no-ext-data --no-keystore --no-perms --single-app --system-apps --update-tools --use-busybox-selinux --help ; do
+        str="$(optionHelp "$x" true)"
+        echo "$x|$str" | awk -F'|' '{printf "%-25s |%s\n", $1, $2}' | column -t -s '|' -E 2 -W 2
+    done
+    echo ""
+    echo "some examples:"
+    echo "=========="
+    echo "# create backup from local '/data' dump from single app:"
+    echo "bash backup_apps.sh  --local --single-app org.videolan.vlc --data-path /path/to/datadump  --backup-dir myBackupDir"
+    echo "=========="
+    echo "# create backup from device matching appsingle app:"
+    echo "bash backup_apps.sh --matching-apps \"com.starfinanz.mobile.android.dkbpushtan|com.github.bravenewpipe\""
+    echo "=========="
+    echo "# backup all user apks from device:"
+    echo "bash  backup_apps.sh --backup-dir myBackupDir2 --no-keystore --no-data --no-ext-data --no-perms"
+}
+
 argCount=${#@}
 while [ $argCount -gt 0 ] ; do
     if [[ "$1" == "--backup-dir" ]]; then
@@ -30,6 +55,10 @@ while [ $argCount -gt 0 ] ; do
         shift; let argCount-=1
         BACKUP_DIR="$1"
         shift; let argCount-=1
+    elif [[ "$1" == "--help" ]]; then
+        shift; let argCount-=1
+        displayHelp
+        exit 0
     elif [[ "$1" == "--debug" ]]; then
         shift; let argCount-=1
         DEBUG=true
@@ -101,7 +130,6 @@ while [ $argCount -gt 0 ] ; do
     fi
 done
 
-curr_dir="$(dirname "$0")"
 . "$curr_dir/functions.sh"
 
 set -e   # fail early

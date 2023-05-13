@@ -28,6 +28,28 @@ DO_ACTION_KEYSTORE=true
 DO_ACTION_PERMISSIONS=true
 DO_UPDATE_TOOLS=false
 
+curr_dir="$(dirname "$0")"
+. "$curr_dir/lib/functions_options.sh"
+
+function displayHelp()
+{
+    echo
+    echo "$0 is a script to restore apks, data, external data, keystores, permissions. For more information have a look at this help."
+    echo
+    for x in --backup-dir --data-path --debug --do-nothing --help --matching-apps --no-apk --no-data --no-ext-data --no-keystore --no-perms --single-app --update-tools ; do
+        str="$(optionHelp "$x" false)"
+        #echo "$x|$str" | column -t -s '|'   -W 2
+        echo "$x|$str" | awk -F'|' '{printf "%-25s |%s\n", $1, $2}' | column -t -s '|' -E 2 -W 2
+    done
+    echo ""
+    echo "some examples:"
+    echo "=========="
+    echo "# restore single app to device:"
+    echo "bash restore_apps.sh --single-app \"org.videolan.vlc\""
+    echo "=========="
+    echo "# restore only apks to device:"
+    echo "bash  restore_apps.sh --backup-dir myBackupDir --no-keystore --no-data --no-ext-data --no-perms"
+}
 
 argCount=${#@}
 while [ $argCount -gt 0 ] ; do
@@ -36,6 +58,10 @@ while [ $argCount -gt 0 ] ; do
         shift; let argCount-=1
         BACKUP_DIR="$1"
         shift; let argCount-=1
+    elif [[ "$1" == "--help" ]]; then
+        shift; let argCount-=1
+        displayHelp
+        exit 0
     elif [[ "$1" == "--debug" ]]; then
         shift; let argCount-=1
         DEBUG=true
@@ -99,7 +125,6 @@ if [[ ! -d "$BACKUP_DIR" ]] || [ "a${BACKUP_DIR}b" == "ab" ]; then
 	exit 2
 fi
 
-curr_dir="$(dirname "$0")"
 . "$curr_dir/functions.sh"
 . "$curr_dir/lib/functions_installer.sh"
 
