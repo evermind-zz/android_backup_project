@@ -11,7 +11,6 @@ SYSTEM_PATTERN="/system/app\|/system/priv-app\|/system/product/app\|/system/prod
 SINGLE_APP=""
 DO_ONLY_MATCHING_APPS=false
 MATCHING_APPS=""
-DO_IT=true # for try run
 DO_ACTION_APK=true
 DO_ACTION_DATA=true
 DO_ACTION_EXT_DATA=true
@@ -46,9 +45,6 @@ while [ $argCount -gt 0 ] ; do
     elif [[ "$1" == "--use-busybox-selinux" ]]; then
         shift; let argCount-=1
         USE_BUSYBOX_SELINUX_VARIANT="Yeah"
-    elif [[ "$1" == "--do-nothing" ]]; then
-        shift; let argCount-=1
-        DO_IT=false
     elif [[ "$1" == "--no-apk" ]]; then
         shift; let argCount-=1
         DO_ACTION_APK=false
@@ -94,28 +90,16 @@ while [ $argCount -gt 0 ] ; do
         shift; let argCount-=1
         if [ "a${1}b" == "ab" ] ; then
             echo "ERROR: You have to specify a package signature(s) for --matching-apps"
-            echo "-->eg. --matching-apps com.starfinanz.mobile.android.dkbpushtan|com.github.bravenewpipe"
+            echo "-->eg. --matching-apps \"com.starfinanz.mobile.android.dkbpushtan|com.github.bravenewpipe\""
             exit 1
         fi
         MATCHING_APPS=$1
-        shift; let argCount-=1
-
-    elif [[ "$1" == "--extra-data" ]]; then
-        DO_BACKUP_EXTRA_DATA=true
         shift; let argCount-=1
     else
         echo "ERROR unknown parameter: $1"
         exit
     fi
 done
-
-echo $DATA_PATH
-
-if $IS_LOCAL ; then
-    echo islocal
-else
-    echo not local
-fi
 
 curr_dir="$(dirname "$0")"
 . "$curr_dir/functions.sh"
@@ -238,7 +222,7 @@ function postBackupActions()
 }
 ## END functions
 
-#checkPrerequisites
+checkPrerequisites
 
 updateBusybox "$DO_UPDATE_TOOLS"
 updateTarBinary "$DO_UPDATE_TOOLS"
@@ -353,7 +337,7 @@ for APP in $APPS; do
         keystorePath=$DATA_PATH/misc/keystore/user_0
         keystoreForAppList=/tmp/filelist.backup_apps.list
 
-        $AS "$BUSYBOX find "$keystorePath" -name "*${USERID}_*"" | sed "s@${keystorePath}/@@g" > $keystoreForAppList
+        $AS $BUSYBOX find "$keystorePath" -name "*${USERID}_*" | sed "s@${keystorePath}/@@g" > $keystoreForAppList
         noOfKeystores=`stat -c %s $keystoreForAppList`
         if [ $noOfKeystores -gt 0 ] ; then
             einfo "[$appSign]: backup keystores"

@@ -181,6 +181,16 @@ function checkPrerequisites()
 			exit 1
 		fi
 	fi
+
+        if ! which xmlstarlet &> /dev/null ; then
+            echo "xmlstarlet not found, please install xmlstarlet"
+            exit 1
+        fi
+
+        if ! which openssl &> /dev/null ; then
+            echo "openssl not found, please install openssl"
+            exit 1
+        fi
 }
 
 function checkRootType()

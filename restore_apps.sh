@@ -81,7 +81,7 @@ while [ $argCount -gt 0 ] ; do
         shift; let argCount-=1
         if [ "a${1}b" == "ab" ] ; then
             echo "ERROR: You have to specify a package signature(s) for --matching-apps"
-            echo "-->eg. --matching-apps com.starfinanz.mobile.android.dkbpushtan|com.github.bravenewpipe"
+            echo "-->eg. --matching-apps \"com.starfinanz.mobile.android.dkbpushtan|com.github.bravenewpipe\""
             exit 1
         fi
         MATCHING_APPS=$1
