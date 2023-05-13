@@ -237,11 +237,6 @@ function postBackupActions()
 updateBusybox "$DO_UPDATE_TOOLS"
 updateTarBinary "$DO_UPDATE_TOOLS"
 
-if ! $HAS_CUSTOM_BACKUP_DIR ; then
-    einfo2 mkBackupDir
-    #mkBackupDir
-fi
-
 if $IS_LOCAL ; then
     PACKAGES=$($AS cat "$DATA_PATH/system/packages.xml" | xmlstarlet sel -T -t -m "//packages/package"  -v "@codePath" -o "|" -v "@name" -n)
 else
@@ -251,6 +246,11 @@ else
 
     #checkForCleanData
     PACKAGES=$($A shell "cmd package list packages -f")
+
+    if ! $HAS_CUSTOM_BACKUP_DIR ; then
+        einfo2 mkBackupDir
+        mkBackupDir
+    fi
 fi
 
 edebug "$PACKAGES"
