@@ -164,6 +164,71 @@ function doesDirHaveFiles()
     fi
     return 0
 }
+
+function determineToyboxBinary()
+{
+    local hasToybox=false
+    for x in "toybox" "/data/local/toybox" "toybox-ext" "toybox_vendor" "toybox-stock" ; do
+        if TOYBOX=$($AS which $x); then
+            hasToybox=true
+            break
+        else
+            continue
+        fi
+    done
+
+    if $hasToybox ; then
+        echo $TOYBOX
+    fi
+}
+
+function preBackupActions()
+{
+    local package=$1
+    local userid=$(getUserIdFromDumpsys "$package")
+    local toybox=$(determineToyboxBinary) # for compatible ps version
+
+    if [ "a${toybox}b" == "ab" ] ; then
+        eerror "todo implement none toybox version -> process won't be stop"
+        return 0
+    fi
+    local pids=$(
+        (
+            $AS $toybox ps -A -o PID -u $userid | tail -n +2
+            $AS $toybox ls -l /proc/*/fd/* 2>/dev/null |
+                grep -E "/data/data/|/media/" |
+                grep -F /$package/ |
+                cut -s -d / -f 3
+        ) |
+        sort -u -n | xargs | sed -e 's@ @,@g'
+    )
+
+    edebug "pids=$pids"
+
+    STOPPED_PIDS=()
+    if [[ -n $pids ]]; then
+        while read -r user pid process; do
+            if [[ $user    != u0_*                        ]]; then continue; fi
+            if [[ $process == android.process.media       ]]; then continue; fi
+            if [[ $process == com.android.externalstorage ]]; then continue; fi
+            $AS $toybox kill -STOP $pid
+            STOPPED_PIDS+=($pid)
+            einfo "[$package] stopped PID $pid for uid $userid"
+        done < <($AS $toybox ps -A -w -o USER,PID,NAME -p $pids)
+    fi
+
+    FNC_RETURN="${STOPPED_PIDS[*]}"
+}
+
+function postBackupActions()
+{
+    local package="$1"
+    local stoppedPids=$2
+
+    if [[ -n $stoppedPids ]]; then
+        $AS kill -CONT "${stoppedPids[@]}"
+    fi
+}
 ## END functions
 
 #checkPrerequisites
@@ -218,15 +283,11 @@ fi
 
 showGlobalBackupInfo
 
-if ! $IS_LOCAL ; then
-    #stopRuntime
-    echo -n
-fi
-
 einfo "## Pull apps"
 for APP in $APPS; do
     echo $APP
 
+    stoppedPids=""
     if $IS_LOCAL ; then
        appDir="$(echo $APP | awk -F'|' '{print $1}' | sed 's@/data@@')"
        dataDir="$(echo $APP | awk -F'|' '{print $2}')"
@@ -234,6 +295,10 @@ for APP in $APPS; do
         appPath=`echo $APP | sed 's/package://' | rev | cut -d "=" -f2- | rev`
         appDir=${appPath%/*}
         dataDir=`echo $APP | sed 's/package://' | rev | cut -d "=" -f1 | rev`
+
+        # stop app process(es) for backup
+        preBackupActions "$dataDir"
+        stoppedPids="$FNC_RETURN"
     fi
 
     edebug appPath=$appPath
@@ -275,7 +340,7 @@ for APP in $APPS; do
     #####################
     if $DO_ACTION_KEYSTORE ; then
         # get keystore if exists
-        USERID="`getUserId  $DATA_PATH/data/$dataDir`"
+        USERID="`getUserIdOfFile  $DATA_PATH/data/$dataDir`"
         keystorePath=$DATA_PATH/misc/keystore/user_0
         keystoreForAppList=/tmp/filelist.backup_apps.list
 
@@ -327,12 +392,13 @@ for APP in $APPS; do
     ############
     # backup meta data
     getMetaXmlData "$dataDir" | encryptIfSelected > $(getMetaFileName "${appPackage}")
+
+
+    if ! $IS_LOCAL ; then
+        postBackupActions "$appSign" "$stoppedPids"
+    fi
 done
 
 cleanup
 
-if ! $IS_LOCAL ; then
-    #startRuntime
-    echo -n
-fi
 popd &> /dev/null # -> $BACKUP_DIR

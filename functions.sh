@@ -376,12 +376,18 @@ function updateBusybox()
     fi
 }
 
-function getUserId()
+function getUserIdOfFile()
 {
         $AS $BUSYBOX stat -c "%u" "$1"
 }
 
-function getGroupId()
+function getUserIdFromDumpsys()
+{
+    local appSign="$1"
+    $AS dumpsys package $appSign | grep userId= | egrep -o '[0-9]+'
+}
+
+function getGroupIdOfFile()
 {
         $AS $BUSYBOX stat -c "%g" "$1"
 }

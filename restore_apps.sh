@@ -432,9 +432,9 @@ for appSign in $APPS; do
         #####################
 	edebug "[$appSign]: Attempting to restore data for $APP"
         appDataDir="$DATA_PATH/data/$dataDir"
-        #newUid=$(getUserId "$appDataDir")
-        #newGid=$(getGroupId "$appDataDir")
-        $DO_IT && newUid=$($AS dumpsys package $appSign | grep userId= | egrep -o '[0-9]+')
+        #newUid=$(getUserIdOfFile "$appDataDir")
+        #newGid=$(getGroupIdOfFile "$appDataDir")
+        $DO_IT && newUid=$(getUserIdFromDumpsys "$appSign")
         newGid=$newUid
 
 	if $DO_IT && [[ -z $newUid ]]; then
@@ -470,8 +470,8 @@ for appSign in $APPS; do
                 ####
                 # restore app data ownership
                 if $DO_IT ; then
-                    oldUid=$(getUserId "$appDataDir")
-                    oldGid=$(getGroupId "$appDataDir")
+                    oldUid=$(getUserIdOfFile "$appDataDir")
+                    oldGid=$(getGroupIdOfFile "$appDataDir")
                     fix_perms_script=$appDataDir/${dataDir}_fix_permissions_0234fo3.sh
 IFS="
 "
