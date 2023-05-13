@@ -7,7 +7,7 @@
 IS_LOCAL=false
 
 DATA_PATH="/data"
-SYSTEM_PATTERN=""
+SYSTEM_PATTERN="/system/app\|/system/priv-app\|/system/product/app\|/system/product/priv-app\|/product/overlay"
 SINGLE_APP=""
 DO_ONLY_MATCHING_APPS=false
 MATCHING_APPS=""
@@ -20,6 +20,7 @@ DO_ACTION_PERMISSIONS=true
 DO_ACTION_EXT_DATA_SDCARD=false
 DO_UPDATE_TOOLS=false
 DO_ENCRYPT=false
+DO_BACKUP_SYSTEM_APPS=false
 HAS_CUSTOM_BACKUP_DIR=false
 USE_BUSYBOX_SELINUX_VARIANT=""
 
@@ -76,7 +77,7 @@ while [ $argCount -gt 0 ] ; do
 
     elif [[ "$1" == "--system-apps" ]]; then
         shift; let argCount-=1
-        SYSTEM_PATTERN="/system/app\|/system/priv-app\|/system/product/app\|/system/product/priv-app\|/product/overlay"
+        DO_BACKUP_SYSTEM_APPS=true
 
     elif [[ "$1" == "--single-app" ]]; then
         shift; let argCount-=1
@@ -257,7 +258,9 @@ edebug "$PACKAGES"
 
 DATA_PATTERN="/data/app"
 PATTERN=$DATA_PATTERN
-if [[ "$SYSTEM_PATTERN" != "" ]]; then PATTERN="$SYSTEM_PATTERN}\|$DATA_PATTERN" ; fi
+if $DO_BACKUP_SYSTEM_APPS; then
+    PATTERN="$SYSTEM_PATTERN}\|$DATA_PATTERN"
+fi
 
 if $DO_ENCRYPT ; then
     checkIfPwPresent true
