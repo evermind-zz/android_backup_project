@@ -225,9 +225,15 @@ function postBackupActions()
 {
     local package="$1"
     local stoppedPids=$2
+    local toybox=$(determineToyboxBinary) # for compatible ps version
 
     if [[ -n $stoppedPids ]]; then
-        $AS kill -CONT "${stoppedPids[@]}"
+        for pid in ${stoppedPids[@]} ; do
+            local hasProcessWithPid=`$AS $toybox ps -A  -p "${pid}" | tail -n +2 | wc -l`
+            if [ $hasProcessWithPid -eq 1 ] ; then
+                $AS $toybox kill -CONT "${pid}"
+            fi
+        done
     fi
 }
 ## END functions
