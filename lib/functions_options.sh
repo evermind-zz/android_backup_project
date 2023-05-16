@@ -59,6 +59,9 @@ function optionHelp()
         --system-apps)
             echo "include system apps in backup"
             ;;
+        --system-apps-only)
+            echo "include only system apps in backup"
+            ;;
         --update-tools)
             echo "force updating tools via git. At the moment tar and busybox"
             ;;

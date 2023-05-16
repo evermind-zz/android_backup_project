@@ -20,6 +20,7 @@ DO_ACTION_EXT_DATA_SDCARD=false
 DO_UPDATE_TOOLS=false
 DO_ENCRYPT=false
 DO_BACKUP_SYSTEM_APPS=false
+DO_BACKUP_SYSTEM_APPS_ONLY=false
 HAS_CUSTOM_BACKUP_DIR=false
 USE_BUSYBOX_SELINUX_VARIANT=""
 
@@ -31,7 +32,7 @@ function displayHelp()
     echo
     echo "$0 is a script to backup apks, data, external data, keystores, permissions and external app related data from sdcard. For more information have a look at this help."
     echo
-    for x in --backup-dir --data-path --debug --encrypt --ext-data-sdcard --local --matching-apps --no-apk --no-data --no-ext-data --no-keystore --no-perms --single-app --system-apps --update-tools --use-busybox-selinux --help ; do
+    for x in --backup-dir --data-path --debug --encrypt --ext-data-sdcard --local --matching-apps --no-apk --no-data --no-ext-data --no-keystore --no-perms --single-app --system-apps --system-apps-only --update-tools --use-busybox-selinux --help; do
         str="$(optionHelp "$x" true)"
         echo "$x|$str" | awk -F'|' '{printf "%-25s |%s\n", $1, $2}' | column -t -s '|' -E 2 -W 2
     done
@@ -103,7 +104,9 @@ while [ $argCount -gt 0 ] ; do
     elif [[ "$1" == "--system-apps" ]]; then
         shift; let argCount-=1
         DO_BACKUP_SYSTEM_APPS=true
-
+    elif [[ "$1" == "--system-apps-only" ]]; then
+        shift; let argCount-=1
+        DO_BACKUP_SYSTEM_APPS_ONLY=true
     elif [[ "$1" == "--single-app" ]]; then
         shift; let argCount-=1
         if [ "a${1}b" == "ab" ] ; then
@@ -277,7 +280,10 @@ edebug "$PACKAGES"
 DATA_PATTERN="/data/app"
 PATTERN=$DATA_PATTERN
 if $DO_BACKUP_SYSTEM_APPS; then
-    PATTERN="$SYSTEM_PATTERN}\|$DATA_PATTERN"
+    PATTERN="${SYSTEM_PATTERN}\|$DATA_PATTERN"
+fi
+if $DO_BACKUP_SYSTEM_APPS_ONLY; then
+    PATTERN="${SYSTEM_PATTERN}"
 fi
 
 if $DO_ENCRYPT ; then
