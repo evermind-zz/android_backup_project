@@ -473,7 +473,11 @@ for appSign in $APPS; do
         appDataDir="$DATA_PATH/data/$dataDir"
         #newUid=$(getUserIdOfFile "$appDataDir")
         #newGid=$(getGroupIdOfFile "$appDataDir")
-        $DO_IT && newUid=$(getUserIdFromDumpsys "$appSign")
+        if $DO_IT ; then
+            newUid=$(getUserIdFromDumpsys "$appSign")
+            noEmptyValueOrFail "$newUid" "\$newUid for the apk $appSign could not be read"
+        fi
+
         newGid=$newUid
 
 	if $DO_IT && [[ -z $newUid ]]; then

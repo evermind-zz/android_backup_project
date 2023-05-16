@@ -206,6 +206,7 @@ function preBackupActions()
 {
     local package=$1
     local userid=$(getUserIdFromDumpsys "$package")
+    noEmptyValueOrFail "$userid" "\$userid for the apk $package could not be read"
     local toybox=$(determineToyboxBinary) # for compatible ps version
 
     if [ "a${toybox}b" == "ab" ] ; then

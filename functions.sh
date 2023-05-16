@@ -394,7 +394,17 @@ function getUserIdOfFile()
 function getUserIdFromDumpsys()
 {
     local appSign="$1"
-    $AS dumpsys package $appSign | grep userId= | egrep -o '[0-9]+'
+    $AS "dumpsys package $appSign" | grep userId= | egrep -o '[0-9]+'
+}
+
+function noEmptyValueOrFail()
+{
+    local value="$1"
+    local errMsg="$2"
+    if [ "a${value}b" == "ab" ] ; then
+        eerror "$errMsg"
+        exit 1
+    fi
 }
 
 function getGroupIdOfFile()
