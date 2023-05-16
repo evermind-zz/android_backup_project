@@ -62,6 +62,9 @@ function optionHelp()
         --system-apps-only)
             echo "include only system apps in backup"
             ;;
+        --list-apps-only)
+            echo "list apps only that might be $backupOrRestore"
+            ;;
         --update-tools)
             echo "force updating tools via git. At the moment tar and busybox"
             ;;

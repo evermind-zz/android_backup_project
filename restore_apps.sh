@@ -27,6 +27,7 @@ DO_ACTION_EXT_DATA=true
 DO_ACTION_KEYSTORE=true
 DO_ACTION_PERMISSIONS=true
 DO_UPDATE_TOOLS=false
+DO_LIST_APPS_ONLY=false
 
 curr_dir="$(dirname "$0")"
 . "$curr_dir/lib/functions_options.sh"
@@ -36,7 +37,7 @@ function displayHelp()
     echo
     echo "$0 is a script to restore apks, data, external data, keystores, permissions. For more information have a look at this help."
     echo
-    for x in --backup-dir --data-path --debug --do-nothing --help --matching-apps --no-apk --no-data --no-ext-data --no-keystore --no-perms --single-app --update-tools ; do
+    for x in --backup-dir --data-path --debug --do-nothing --help --matching-apps --no-apk --no-data --no-ext-data --no-keystore --no-perms --single-app --update-tools --list-apps-only; do
         str="$(optionHelp "$x" false)"
         #echo "$x|$str" | column -t -s '|'   -W 2
         echo "$x|$str" | awk -F'|' '{printf "%-25s |%s\n", $1, $2}' | column -t -s '|' -E 2 -W 2
@@ -91,6 +92,9 @@ while [ $argCount -gt 0 ] ; do
         shift; let argCount-=1
         DATA_PATH=$1
         shift; let argCount-=1
+    elif [[ "$1" == "--list-apps-only" ]]; then
+        shift; let argCount-=1
+        DO_LIST_APPS_ONLY=true
     elif [[ "$1" == "--single-app" ]]; then
         shift; let argCount-=1
         if [ "a${1}b" == "ab" ] ; then
@@ -135,15 +139,18 @@ OLDIFS="$IFS"
 checkPrerequisites
 
 if $DO_IT ; then
-    updateBusybox "$DO_UPDATE_TOOLS"
-    updateTarBinary "$DO_UPDATE_TOOLS"
 
-    lookForAdbDevice
+    if ! $DO_LIST_APPS_ONLY ; then
+        updateBusybox "$DO_UPDATE_TOOLS"
+        updateTarBinary "$DO_UPDATE_TOOLS"
 
-    checkRootType
+        lookForAdbDevice
 
-    pushBusybox
-    pushTarBinary
+        checkRootType
+
+        pushBusybox
+        pushTarBinary
+    fi
 fi
 
 cd "$BACKUP_DIR"
@@ -403,6 +410,13 @@ for appSign in $APPS; do
             installer=$(getMetaAttr "installer" "$metaPackage")
         fi
 
+    if $DO_LIST_APPS_ONLY ; then
+        it=$(getMetaAttr "it" "$metaPackage")
+        ut=$(getMetaAttr "ut" "$metaPackage")
+        einfo "APP|firstInstallTime=$(getDateForMilliSecondsSince1970 "$it")|lastUpdateTime=$(getDateForMilliSecondsSince1970 "$ut")|$appSign"
+        continue
+    fi
+
         #####################
         # restore app
         #####################
@@ -566,5 +580,7 @@ IFS="
 done
 #echo "script exiting after adb install will want to fix securelinux perms with: restorecon -FRDv /data/data"
 #$AS "restorecon -FRDv /data/data" # for my phone this is not needed but maybe for others
-$DO_IT && cleanup
+if ! $DO_LIST_APPS_ONLY ; then
+    $DO_IT && cleanup
+fi
 

@@ -491,3 +491,9 @@ function compressor() {
 function decompressor() {
     "$G_COMPRESS_BINARY" $G_COMPRESS_BINARY_DECOMPRESS_OPTS
 }
+
+function getDateForMilliSecondsSince1970() {
+    # the input is in hex therfore convert first
+    local millis=$((16#$1))
+    LC_ALL=C date -Iseconds --date=@$(($millis/1000))
+}
