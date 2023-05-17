@@ -230,6 +230,8 @@ function createExtDataPermUpdateScript() {
     local newGid="$3"
     local oldGidVar=$(($oldGid + 20000))
     local newGidVar=$(($newGid + 20000))
+    local oldGidVar2=$(($oldGid + 30000))
+    local newGidVar2=$(($newGid + 30000))
     local media_rw=1023
 
     echo "# extDataDir: oldGid=$oldGid newGid=$newGid oldGidVar=$oldGidVar newGidVar=$newGidVar"
@@ -248,7 +250,9 @@ function createExtDataPermUpdateScript() {
             if [ "$OLDG" -eq "$oldGidVar" ] ; then
                 # replace $oldGidVar with newGidVar
                 line="`echo "$line" | sed "s@OLDG=$oldGidVar@$newGidVar@g"`"
-                #echo "$OLDG" -eq "$oldGidVar"
+            elif [ "$OLDG" -eq "$oldGidVar2" ] ; then
+                # replace $oldGidVar2 with newGidVar2
+                line="`echo "$line" | sed "s@OLDG=$oldGidVar2@$newGidVar2@g"`"
             else
                 echo GIDERROR $line
                 exit 1

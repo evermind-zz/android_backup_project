@@ -401,7 +401,11 @@ function getUserIdOfFile()
 function getUserIdFromDumpsys()
 {
     local appSign="$1"
-    $AS "dumpsys package $appSign" | grep userId= | egrep -o '[0-9]+'
+    # head -n1 is used to not allow multiple matches.
+    # - multiple userId can occur if a app has shared user(s)
+    # -> TODO figure out how to deal with that
+    # -> for now we ignore a 2nd match
+    $AS "dumpsys package $appSign" | grep userId= | egrep -o '[0-9]+' | head -n1
 }
 
 function noEmptyValueOrFail()
