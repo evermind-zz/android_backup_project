@@ -93,6 +93,13 @@ function getPermFileName() {
     echo "$permsPackage"
 }
 
+function getPermSharedUserFileName() {
+    local appPackage="$1"
+    local permsPackage=$(getPermFileName "${appPackage}") # get xml extension
+    local permsSharedFileName="${permsPackage/perms_/permsSharedUser_}"
+    echo "$permsSharedFileName"
+}
+
 function getMetaFileName() {
     local appPackage="$1"
     local permsPackage=$(getPermFileName "${appPackage}") # get xml extension

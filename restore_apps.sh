@@ -390,6 +390,25 @@ function checkForEncryptedBackup()
     fi
 }
 
+function restorePermissions()
+{
+    local appSign="$1"
+    local permsPackage="$2"
+    local whatPerms="$3"
+
+    if test -e "$permsPackage" ; then
+        einfo "[$appSign]: restoring previously permissions of $whatPerms"
+
+        local permissions=$(getPerms "$permsPackage")
+        for x in ${permissions[@]} ; do
+            cmd="$(generatePmGrantRevokeCmd "$x" "$appSign")"
+            $DO_IT && ($AS "$cmd" && echo "success perms: $cmd" || echo "error perms: $cmd")
+        done
+    else
+        einfo "[$appSign]: NOT restoring previously $whatPerms permissions -- no backup file"
+    fi
+}
+
 showGlobalBackupInfo
 
 einfo "## Installing apps"
@@ -565,19 +584,12 @@ IFS="
         #####################
         # restore previously permissions"
         #####################
-	permsPackage=$(getPermFileName "${appPackage}")
         if $DO_ACTION_PERMISSIONS ; then
-            if test -e "$permsPackage" ; then
-                einfo "[$appSign]: restoring previously permissions"
+            permsPackage=$(getPermFileName "${appPackage}")
+            restorePermissions "$appSign" "$permsPackage" "app"
 
-                permissions=$(getPerms "$permsPackage")
-                for x in ${permissions[@]} ; do
-                    cmd="$(generatePmGrantRevokeCmd "$x" "$appSign")"
-                    $DO_IT && ($AS "$cmd" && echo "success perms: $cmd" || echo "error perms: $cmd")
-                done
-            else
-                einfo "[$appSign]: NOT restoring previously permissions -- no backup file"
-            fi
+            permsSharedUserPackage=$(getPermSharedUserFileName "${appPackage}")
+            restorePermissions "$appSign" "$permsSharedUserPackage" "shared user"
         else
             einfo "[$appSign]: SKIP restoring previously permissions -- as requested via commandline"
         fi

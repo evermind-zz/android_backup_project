@@ -163,11 +163,29 @@ function matchApp()
     fi
 }
 
-function getPermsXmlData()
+function backupPermsXmlData()
 {
     local appSign="$1"
-    $AS cat "$DATA_PATH/system/users/0/runtime-permissions.xml" | xmlstarlet sel -t -c \
-        "` echo "/runtime-permissions/pkg[@name = 'FOLLER']" | sed -e "s@FOLLER@$appSign@g"`"
+    local path="` echo "/runtime-permissions/pkg[@name='FOLLER']" | sed -e "s@FOLLER@$appSign@g"`"
+    local result="`$AS cat "$DATA_PATH/system/users/0/runtime-permissions.xml" | xmlstarlet sel -t -c $path -n`"
+    local permsFilename=$(getPermFileName "${appPackage}")
+
+    # maybe some perms are stored for a shared user
+    local path2="` echo "/runtime-permissions/shared-user[@name='FOLLER']" | sed -e "s@FOLLER@$appSign@g"`"
+    local result2="`$AS cat "$DATA_PATH/system/users/0/runtime-permissions.xml" | xmlstarlet sel -t -c $path2 -n | sed -e 's@shared-user@pkg@g'`"
+    local permsSharedFilename=$(getPermSharedUserFileName "${appPackage}")
+
+    if [ "a${result}b" != "ab" ] ; then
+        echo "$result" | encryptIfSelected > "$permsFilename"
+    else
+        einfo "[$appSign]: SKIP backup of app runtime-permissions -- as there are none"
+    fi
+
+    if [ "a${result2}b" != "ab" ] ; then
+        echo "$result2" | encryptIfSelected > "$permsSharedFilename"
+    else
+        einfo "[$appSign]: SKIP backup of shared-user runtime-permissions -- as there are none"
+    fi
 }
 
 function getGlobalMetaData()
@@ -420,7 +438,7 @@ for APP in $APPS; do
     fi
 
     if $DO_ACTION_PERMISSIONS ; then
-        getPermsXmlData "$dataDir" | encryptIfSelected > $(getPermFileName "${appPackage}")
+        backupPermsXmlData "$dataDir" "$appPackage"
     fi
 
     ############
