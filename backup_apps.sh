@@ -323,6 +323,7 @@ if [ ${#APPS} -gt 0 ] ; then
 fi
 
 
+noEmptyValueOrFail "$BACKUP_DIR" "backup dir can not be empty. On --local always specify --backup-dir too"
 mkdir -p "$BACKUP_DIR"
 pushd "$BACKUP_DIR" &> /dev/null
 
@@ -335,11 +336,6 @@ showGlobalBackupInfo
 
 einfo "## Pull apps"
 for APP in $APPS; do
-    echo "APP:$APP"
-    if $DO_LIST_APPS_ONLY ; then
-        continue
-    fi
-    stoppedPids=""
     if $IS_LOCAL ; then
        appDir="$(echo $APP | awk -F'|' '{print $1}' | sed 's@/data@@')"
        dataDir="$(echo $APP | awk -F'|' '{print $2}')"
@@ -348,6 +344,20 @@ for APP in $APPS; do
         appDir=${appPath%/*}
         dataDir=`echo $APP | sed 's/package://' | rev | cut -d "=" -f1 | rev`
 
+        # stop app process(es) for backup
+        preBackupActions "$dataDir"
+        stoppedPids="$FNC_RETURN"
+    fi
+
+    if $DO_LIST_APPS_ONLY ; then
+        einfo "APP|$dataDir"
+        continue
+    else
+        echo "APP:$APP"
+    fi
+
+    stoppedPids=""
+    if ! $IS_LOCAL ; then
         # stop app process(es) for backup
         preBackupActions "$dataDir"
         stoppedPids="$FNC_RETURN"
