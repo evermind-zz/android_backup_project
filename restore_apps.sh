@@ -283,7 +283,11 @@ function restoreKeystore() {
     $AS "$BUSYBOX find "$keystoreTmpDir" | grep $oldUid"
 
     for x in `$AS "$BUSYBOX find "$keystoreTmpDir" | grep $oldUid"` ; do
-        $AS "$BUSYBOX mv "$x" "${keystorePath}/`basename ${x/$oldUid/$newUid}`""
+        local targetFile="${keystorePath}/`basename ${x/$oldUid/$newUid}`"
+        $AS "$BUSYBOX mv "$x" "$targetFile""
+        # fix selinux context
+        $AS "restorecon -FRv "$targetFile""
+
     done
 }
 
@@ -545,6 +549,9 @@ IFS="
                     IFS="$OLDIFS"
                     $AS "$BUSYBOX sh "$fix_perms_script""
                     $AS "$BUSYBOX rm "$fix_perms_script""
+
+                    # fix selinux context
+                    $AS "restorecon -FRDv "$appDataDir""
                 fi
             else
                 einfo "[$appSign]: NOT restoring app data -- no backup file"
