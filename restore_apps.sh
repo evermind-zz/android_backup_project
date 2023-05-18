@@ -38,7 +38,7 @@ function displayHelp()
     echo
     echo "$0 is a script to restore apks, data, external data, keystores, permissions. For more information have a look at this help."
     echo
-    for x in --backup-dir --data-path --debug --do-nothing --help --matching-apps --no-apk --no-data --no-ext-data --no-keystore --no-perms --single-app --update-tools --list-apps-only; do
+    for x in --backup-dir --data-path --debug --do-nothing --help --matching-apps --no-apk --no-data --no-ext-data --no-keystore --no-perms --single-app --update-tools --list-apps-only --no-precaution; do
         str="$(optionHelp "$x" false)"
         #echo "$x|$str" | column -t -s '|'   -W 2
         echo "$x|$str" | awk -F'|' '{printf "%-25s |%s\n", $1, $2}' | column -t -s '|' -E 2 -W 2

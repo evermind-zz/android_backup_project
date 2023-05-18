@@ -74,6 +74,9 @@ function optionHelp()
         --help)
             echo "Display this help"
             ;;
+        --no-precaution)
+            echo "Do not force user to confirm that he might overwrite files on the device"
+            ;;
         *)
             echo "Unrecognized option $option"
             exit 1

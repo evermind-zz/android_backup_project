@@ -48,9 +48,11 @@ backup_apps.sh is a script to backup apks, data, external data, keystores, permi
 --no-perms                  do not backup set permissions of that app.
 --single-app                only backup this single app. eg: --single-app org.videolan.vlc
 --system-apps               include system apps in backup
+--system-apps-only          include only system apps in backup
 --update-tools              force updating tools via git. At the moment tar and busybox
 --use-busybox-selinux       force to use selinux busybox version on some systems
 --help                      Display this help
+--list-apps-only            list apps only that might be backup
 
 some examples:
 ==========
@@ -89,6 +91,8 @@ restore_apps.sh is a script to restore apks, data, external data, keystores, per
 --no-perms                  do not restore set permissions of that app.
 --single-app                only restore this single app. eg: --single-app org.videolan.vlc
 --update-tools              force updating tools via git. At the moment tar and busybox
+--list-apps-only            list apps only that might be restore
+--no-precaution             Do not force user to confirm that he might overwrite files on the device
 
 some examples:
 ==========
