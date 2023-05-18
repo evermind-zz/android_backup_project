@@ -269,6 +269,7 @@ function postBackupActions()
         for pid in ${stoppedPids[@]} ; do
             local hasProcessWithPid=`$AS $toybox ps -A  -p "${pid}" | tail -n +2 | wc -l`
             if [ $hasProcessWithPid -eq 1 ] ; then
+                einfo "[$package] continue PID $pid"
                 $AS $toybox kill -CONT "${pid}"
             fi
         done

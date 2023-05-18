@@ -28,6 +28,7 @@ DO_ACTION_KEYSTORE=true
 DO_ACTION_PERMISSIONS=true
 DO_UPDATE_TOOLS=false
 DO_LIST_APPS_ONLY=false
+DO_PRECAUTION=true
 
 curr_dir="$(dirname "$0")"
 . "$curr_dir/lib/functions_options.sh"
@@ -116,6 +117,9 @@ while [ $argCount -gt 0 ] ; do
         fi
         MATCHING_APPS=$1
         shift; let argCount-=1
+    elif [[ "$1" == "--no-precaution" ]]; then
+        shift; let argCount-=1
+        DO_PRECAUTION=false
 
     else
         echo "ERROR unknown parameter: $1"
@@ -133,6 +137,21 @@ fi
 . "$curr_dir/lib/functions_installer.sh"
 
 set -e   # fail early
+
+if $DO_PRECAUTION ; then
+    einfo "###############################################################"
+    einfo "# WARNING: Are you sure that your PC is connected to the correct device?"
+    einfo "# Is \"$BACKUP_DIR\" the correct backup you want to restore from?"
+    einfo "#"
+    einfo "# Existing apps/data could be overwritten. Please doublecheck now!"
+    einfo "# Type YES to continue. (you can ignore this warning with: --no-precaution"
+    einfo "###############################################################"
+    read answer
+    if [ "a${answer}b" != "aYESb" ] ; then
+        einfo "You did well and double check everything now!!!"
+        exit 0
+    fi
+fi
 
 OLDIFS="$IFS"
 
