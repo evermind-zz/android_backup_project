@@ -176,16 +176,45 @@ cd "$BACKUP_DIR"
 
 APPS=$(find -maxdepth 1 -type d -printf "%P\n" | egrep '([a-z0-9].){2,}')
 
+function isAppThereOrFail() {
+    local apps="$1"
+    local appToBeFound="$2"
+    local doNotFailButReturnNegative=${3:-false}
+    local isAppInBackup="`echo "${apps}" | grep "^${appToBeFound}$"`"
+    if [ ${#isAppInBackup} -eq 0 ] ; then
+        einfo "There is no app \"$appToBeFound\" to restore"
+        if $doNotFailButReturnNegative ; then
+            return 1
+        else
+            exit 1
+        fi
+    fi
+    FNC_RETURN2="${isAppInBackup}"
+    return 0
+}
+
 function matchApp() {
     if $DO_ONLY_MATCHING_APPS ; then
         NEW_APPS=()
+        local areAppsMissing=false
+
         for x in `echo $MATCHING_APPS | sed -e 's@|@ @g'` ; do
-            NEW_APPS+=(`echo "${APPS}" | grep "^${x}$"`)
+            if ! isAppThereOrFail "${APPS}" "${x}" true ; then
+                areAppsMissing=true
+            else
+                NEW_APPS+=($FNC_RETURN2)
+            fi
         done
+
+        if $areAppsMissing ; then
+            exit 1
+        fi
+
         FNC_RETURN="${NEW_APPS[*]}"
 	einfo "## Restoring matching app(s) in $BACKUP_DIR: "${FNC_RETURN}""
     elif $DO_SINGLE_APP ; then
-        FNC_RETURN="`echo "$APPS" | grep "$SINGLE_APP"`"
+        isAppThereOrFail "${APPS}" "${SINGLE_APP}"
+        FNC_RETURN="$FNC_RETURN2"
 	einfo "## Restoring single app in $BACKUP_DIR: "${FNC_RETURN}""
     else
         FNC_RETURN="`echo "$APPS"`"
