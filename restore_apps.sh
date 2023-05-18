@@ -573,14 +573,15 @@ for appSign in $APPS; do
                 ####
                 # fix lib symlink
                 symlink="$appDataDir/lib"
-                if $DO_IT && $AS test -L "$symlink" ; then # test if there is a link
+                # test -L if there is a link and ! test -e if symlink is broken
+                if $DO_IT && $AS test -L "$symlink" && ! $AS test -e "$symlink" ; then
                     originalSymlinkDate="$($AS "$BUSYBOX stat -c '%y' "$symlink"" | awk '{printf "%s %s\n", $1, $2}' | sed -e 's@\.[0-9]*$@@g' -e 's@ @\\ @g')"
                     $AS rm "$symlink"
                     symlink_target="$(getSymlinkTarget "$appInstalledBaseDir")"
                     if [ "a${symlink_target}b" != "ab" ] ; then
                         $AS "ln -s "$symlink_target" "$symlink""
                     fi
-                    if $AS test -L "$symlink" ; then # change date if symlink created
+                    if $AS test -L "$symlink" ; then # restore date if symlink created
                         $AS "$BUSYBOX touch -ht \"$originalSymlinkDate\" "$symlink""
                     fi
                 fi
