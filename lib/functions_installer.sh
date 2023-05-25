@@ -1,5 +1,6 @@
 function createRemoteTmpApkDir() {
-    local tempdir=$($A shell mktemp -d)
+    local tmpBaseDir="$1"
+    local tempdir=$($A shell mktemp -d -p "$tmpBaseDir")
     echo $tempdir
 }
 
@@ -33,31 +34,30 @@ function installSplitApks() {
 
     $A shell pm install-commit $session_id
 }
-
-function removeTmpApkDir() {
+function doesTmpApkDirExistAndIsValid() {
     local tempdir="$1"
-    if echo $tempdir | egrep -q '^/data/local/tmp/[a-z]+' && adb shell test -e $tempdir ; then
-        echo "rm -rf $tempdir"
-
-        $A shell find "$tempdir"
-        $A shell rm "$tempdir"/*.apk
-        $A shell rmdir "$tempdir/"
+    if [ "a${tempdir}b" != "ab" ] && [ "a${tempdir}b" != "a/b" ] && \
+        [[ $tempdir =~  ^/data/local/tmp/[a-z]+ ]] && $A shell test -e "$tempdir" ; then
+        return 0
+    else
+        return 1
     fi
 }
 
-function installApks() {
-    local installer="$1" ; shift
-    local remoteTmpApkDir="$(createRemoteTmpApkDir)"
-    local noOfApks="${#@}"
+function removeTmpApkDir() {
+    local tempdir="$1"
+    if doesTmpApkDirExistAndIsValid "$tempdir" ; then
+        $A shell find "$tempdir"
+        $A shell rmdir "$tempdir"
+    fi
+}
 
-    pushApksToRemoteTmpDir "$remoteTmpApkDir" $@
-
-    #if [ "$noOfApks" -eq 1 ] ; then
-    #    local remoteApkFile
-    #    adb shell pm install $(doWeNeedInstallerSwitch "$installer") "$installer" -t -r "$1"
-    #elif [ "$noOfApks" -gt 1 ] ; then
-        installSplitApks "$installer" "$remoteTmpApkDir"
-    #fi
-
-    removeTmpApkDir "$remoteTmpApkDir"
+# remove all apks from given tmpDir
+# Note: this method assumes that $REMOTE_TMP_APK_DIR dir below /data/local/tmp/
+function cleanTmpDirFromApks() {
+    local tempdir="$1"
+    if doesTmpApkDirExistAndIsValid "$tempdir" ; then
+        $A shell find "$tempdir"
+        $A shell rm "$tempdir"/*.apk
+    fi
 }
