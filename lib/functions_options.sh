@@ -135,5 +135,7 @@ function resetActions() {
 function printPretty() {
     local option="$1"
     local descr="$2"
-    echo "$option;$descr" | awk -F';' '{printf "%-25s ;%s\n", $1, $2}' | column -t -s ';' -E 2 -W 2
+    # if column is piped into a pager it will be screwed up this set option only if not in a pipe
+    [[ -t 1 ]] && local colOpts="-E 2 -W 2"
+    echo "$option;$descr" | awk -F';' '{printf "%-25s ;%s\n", $1, $2}' | column -t -s ';' $colOpts
 }
