@@ -11,12 +11,7 @@ SYSTEM_PATTERN="/system/app\|/system/priv-app\|/system/product/app\|/system/prod
 SINGLE_APP=""
 DO_ONLY_MATCHING_APPS=false
 MATCHING_APPS=""
-DO_ACTION_APK=true
-DO_ACTION_DATA=true
-DO_ACTION_EXT_DATA=true
-DO_ACTION_KEYSTORE=true
-DO_ACTION_PERMISSIONS=true
-DO_ACTION_EXT_DATA_SDCARD=false
+DO_EXTRA_ACTION_EXT_DATA_SDCARD=false
 DO_UPDATE_TOOLS=false
 DO_ENCRYPT=false
 DO_BACKUP_SYSTEM_APPS=false
@@ -33,9 +28,9 @@ function displayHelp()
     echo
     echo "$0 is a script to backup apks, data, external data, keystores, permissions and external app related data from sdcard. For more information have a look at this help."
     echo
-    for x in --backup-dir --data-path --debug --encrypt --ext-data-sdcard --local --matching-apps --no-apk --no-data --no-ext-data --no-keystore --no-perms --single-app --system-apps --system-apps-only --update-tools --use-busybox-selinux --help --list-apps-only; do
+    for x in --backup-dir --data-path --debug --encrypt --ext-data-sdcard --local --matching-apps --no-apk --no-data --no-ext-data --no-keystore --no-perms --only-apk --only-data --only-ext-data --only-keystore --only-perms --single-app --system-apps --system-apps-only --update-tools --use-busybox-selinux --help --list-apps-only; do
         str="$(optionHelp "$x" true)"
-        echo "$x|$str" | awk -F'|' '{printf "%-25s |%s\n", $1, $2}' | column -t -s '|' -E 2 -W 2
+        printPretty "$x" "$str"
     done
     echo ""
     echo "some examples:"
@@ -91,9 +86,29 @@ while [ $argCount -gt 0 ] ; do
     elif [[ "$1" == "--no-perms" ]]; then
         shift; let argCount-=1
         DO_ACTION_PERMISSIONS=false
+    elif [[ "$1" == "--only-apk" ]]; then
+        shift; let argCount-=1
+        resetActions
+        DO_ACTION_APK=true
+    elif [[ "$1" == "--only-data" ]]; then
+        shift; let argCount-=1
+        resetActions
+        DO_ACTION_DATA=true
+    elif [[ "$1" == "--only-ext-data" ]]; then
+        shift; let argCount-=1
+        resetActions
+        DO_ACTION_EXT_DATA=true
+    elif [[ "$1" == "--only-keystore" ]]; then
+        shift; let argCount-=1
+        resetActions
+        DO_ACTION_KEYSTORE=true
+    elif [[ "$1" == "--only-perms" ]]; then
+        shift; let argCount-=1
+        resetActions
+        DO_ACTION_PERMISSIONS=true
     elif [[ "$1" == "--ext-data-sdcard" ]]; then
         shift; let argCount-=1
-        DO_ACTION_EXT_DATA_SDCARD=true
+        DO_EXTRA_ACTION_EXT_DATA_SDCARD=true
     elif [[ "$1" == "--update-tools" ]]; then
         shift; let argCount-=1
         DO_UPDATE_TOOLS=true
@@ -436,7 +451,7 @@ for APP in $APPS; do
     fi
 
     ## at the moment this is not working on local
-    if $DO_ACTION_EXT_DATA_SDCARD ; then
+    if $DO_EXTRA_ACTION_EXT_DATA_SDCARD ; then
         for sdcardExtraData in $($AS 'ls -d /mnt/media_rw/*') ; do
 
             extraDataPath="$sdcardExtraData/Android/data/${dataDir}"

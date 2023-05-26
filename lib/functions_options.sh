@@ -1,3 +1,13 @@
+
+DO_ACTION_APK=true
+DO_ACTION_DATA=true
+DO_ACTION_EXT_DATA=true
+DO_ACTION_KEYSTORE=true
+DO_ACTION_PERMISSIONS=true
+
+# helper var for areActionOnlyAlreadyActivatedIfNotActivate() function
+L_ARE_ACTION_RESET=false
+
 function optionHelp()
 {
     local option="$1"
@@ -5,6 +15,10 @@ function optionHelp()
 
     local backupOrRestore="restore"
     $isBackupScript && backupOrRestore="backup"
+
+    # determine if option is a --only-* action and set help accordingly
+    local onlyOptionText="not"
+    [[ $option =~  --only-.* ]] && onlyOptionText="only"
 
     case $option in
         --backup-dir)
@@ -38,20 +52,20 @@ function optionHelp()
         --matching-apps)
             echo "only $backupOrRestore matching apps. eg: --matching-apps \"org.mozilla.firefox|org.videolan.vlc\""
             ;;
-        --no-apk)
-            echo "do not $backupOrRestore any apk."
+        --no-apk|--only-apk)
+            echo "do $onlyOptionText $backupOrRestore apk(s)."
             ;;
-        --no-data)
-            echo "do not $backupOrRestore data of app."
+        --no-data|--only-data)
+            echo "do $onlyOptionText $backupOrRestore data of app(s)."
             ;;
-        --no-ext-data)
-            echo "do not $backupOrRestore external data of app. eg: /data/media/0/Android/data/pkg.example"
+        --no-ext-data|--only-ext-data)
+            echo "do $onlyOptionText $backupOrRestore external data of app(s). eg: /data/media/0/Android/data/pkg.example"
             ;;
-        --no-keystore)
-            echo "do not $backupOrRestore keystores belonging to that app."
+        --no-keystore|--only-keystore)
+            echo "do $onlyOptionText $backupOrRestore keystore(s)."
             ;;
-        --no-perms)
-            echo "do not $backupOrRestore set permissions of that app."
+        --no-perms|--only-perms)
+            echo "do $onlyOptionText $backupOrRestore permissions of app(s)."
             ;;
         --single-app)
             echo "only $backupOrRestore this single app. eg: --single-app org.videolan.vlc"
@@ -82,4 +96,44 @@ function optionHelp()
             exit 1
             ;;
     esac
+}
+
+function setVariablesToFirstArg() {
+    local toWhat=$1 ; shift
+    local pointerVar="DA_$RANDOM"
+
+    for varname in ${@} ; do
+        export ${pointerVar}="$varname"
+        export ${!pointerVar}=$toWhat
+    done
+}
+
+function showVariableNameAndValue() {
+    local pointerVar="DA_$RANDOM"
+
+    for varname in ${@} ; do
+        export ${pointerVar}="$varname"
+        echo "${!pointerVar}=${!varname}"
+    done
+}
+
+function areActionOnlyAlreadyActivatedIfNotActivate() {
+    if $L_ARE_ACTION_RESET ; then
+        return 0
+    else
+        L_ARE_ACTION_RESET=true
+        return 1
+    fi
+}
+
+function resetActions() {
+    if ! areActionOnlyAlreadyActivatedIfNotActivate ; then
+        setVariablesToFirstArg false DO_ACTION_APK DO_ACTION_DATA DO_ACTION_EXT_DATA DO_ACTION_KEYSTORE DO_ACTION_PERMISSIONS
+    fi
+}
+
+function printPretty() {
+    local option="$1"
+    local descr="$2"
+    echo "$option;$descr" | awk -F';' '{printf "%-25s ;%s\n", $1, $2}' | column -t -s ';' -E 2 -W 2
 }

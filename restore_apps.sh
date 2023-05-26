@@ -21,11 +21,6 @@ SINGLE_APP=""
 DO_ONLY_MATCHING_APPS=false
 MATCHING_APPS=""
 DO_IT=true # for try run
-DO_ACTION_APK=true
-DO_ACTION_DATA=true
-DO_ACTION_EXT_DATA=true
-DO_ACTION_KEYSTORE=true
-DO_ACTION_PERMISSIONS=true
 DO_UPDATE_TOOLS=false
 DO_LIST_APPS_ONLY=false
 DO_PRECAUTION=true
@@ -40,10 +35,9 @@ function displayHelp()
     echo
     echo "$0 is a script to restore apks, data, external data, keystores, permissions. For more information have a look at this help."
     echo
-    for x in --backup-dir --data-path --debug --do-nothing --help --matching-apps --no-apk --no-data --no-ext-data --no-keystore --no-perms --single-app --update-tools --list-apps-only --no-precaution; do
+    for x in --backup-dir --data-path --debug --do-nothing --help --matching-apps --no-apk --no-data --no-ext-data --no-keystore --no-perms --only-apk --only-data --only-ext-data --only-keystore --only-perms --single-app --update-tools --list-apps-only --no-precaution; do
         str="$(optionHelp "$x" false)"
-        #echo "$x|$str" | column -t -s '|'   -W 2
-        echo "$x|$str" | awk -F'|' '{printf "%-25s |%s\n", $1, $2}' | column -t -s '|' -E 2 -W 2
+        printPretty "$x" "$str"
     done
     echo ""
     echo "some examples:"
@@ -87,6 +81,26 @@ while [ $argCount -gt 0 ] ; do
     elif [[ "$1" == "--no-perms" ]]; then
         shift; let argCount-=1
         DO_ACTION_PERMISSIONS=false
+    elif [[ "$1" == "--only-apk" ]]; then
+        shift; let argCount-=1
+        resetActions
+        DO_ACTION_APK=true
+    elif [[ "$1" == "--only-data" ]]; then
+        shift; let argCount-=1
+        resetActions
+        DO_ACTION_DATA=true
+    elif [[ "$1" == "--only-ext-data" ]]; then
+        shift; let argCount-=1
+        resetActions
+        DO_ACTION_EXT_DATA=true
+    elif [[ "$1" == "--only-keystore" ]]; then
+        shift; let argCount-=1
+        resetActions
+        DO_ACTION_KEYSTORE=true
+    elif [[ "$1" == "--only-perms" ]]; then
+        shift; let argCount-=1
+        resetActions
+        DO_ACTION_PERMISSIONS=true
     elif [[ "$1" == "--update-tools" ]]; then
         shift; let argCount-=1
         DO_UPDATE_TOOLS=true
