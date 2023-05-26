@@ -17,7 +17,7 @@ The scripts were developed and tested only on rooted android 7 and 10.
 
 ## Additional features
 - encryption of backup
-- backup of keystores
+- backup of keystores (may fail if changing phone and/or the implementation is in hardware)
 - backup of external data
 - backup of external data on microSD card
 - loads of command line switches
@@ -31,21 +31,23 @@ $ bash backup_apps.sh --help
 
 backup_apps.sh is a script to backup apks, data, external data, keystores, permissions and external app related data from sdcard. For more information have a look at this help.
 
---backup-dir                where to put the backup. Use always in combination with --local. If backup from device (without this option) there is a generated
-                            backup dir
---data-path                 path to the mountpoint '/data'. Default is '/data'. Useful in combination with --local where you have a copy of the '/data' partit
-                            ion somewhere.
+--backup-dir                where to put the backup. Use always in combination with --local. If backup from device (without this option) there is a generated backup dir
+--data-path                 path to the mountpoint '/data'. Default is '/data'. Useful in combination with --local where you have a copy of the '/data' partition somewhere.
 --debug                     display some more messages.
 --encrypt                   encrypt backup on the fly.
---ext-data-sdcard           backup also data from an external (micro)SD card related to the app you want to backup up. eg: /mnt/media_rw/<SDCARD_MOUNTPOINT>/A
-                            ndroid/data/pkg.example. Restore only manually possible.
+--ext-data-sdcard           backup also data from an external (micro)SD card related to the app you want to backup up. eg: /mnt/media_rw/<SDCARD_MOUNTPOINT>/Android/data/pkg.example. Restore only manually possible.
 --local                     state that this is doing a backup from a copy of your phone's '/data' partition on your PC.
---matching-apps             only backup matching apps. eg: --matching-apps "org.mozilla.firefox
---no-apk                    do not backup any apk.
---no-data                   do not backup data of app.
---no-ext-data               do not backup external data of app. eg: /data/media/0/Android/data/pkg.example
---no-keystore               do not backup keystores belonging to that app.
---no-perms                  do not backup set permissions of that app.
+--matching-apps             only backup matching apps. eg: --matching-apps "org.mozilla.firefox|org.videolan.vlc"
+--no-apk                    do not backup apk(s).
+--no-data                   do not backup data of app(s).
+--no-ext-data               do not backup external data of app(s). eg: /data/media/0/Android/data/pkg.example
+--no-keystore               do not backup keystore(s).
+--no-perms                  do not backup permissions of app(s).
+--only-apk                  do only backup apk(s).
+--only-data                 do only backup data of app(s).
+--only-ext-data             do only backup external data of app(s). eg: /data/media/0/Android/data/pkg.example
+--only-keystore             do only backup keystore(s).
+--only-perms                do only backup permissions of app(s).
 --single-app                only backup this single app. eg: --single-app org.videolan.vlc
 --system-apps               include system apps in backup
 --system-apps-only          include only system apps in backup
@@ -78,17 +80,21 @@ This will cause this script not to try and restore system app data
 restore_apps.sh is a script to restore apks, data, external data, keystores, permissions. For more information have a look at this help.
 
 --backup-dir                the directory with the backup that should be restored
---data-path                 path to the mountpoint '/data'. Default is '/data'. Useful in combination with --local where you have a copy of the '/data' partit
-                            ion somewhere.
+--data-path                 path to the mountpoint '/data'. Default is '/data'. Useful in combination with --local where you have a copy of the '/data' partition somewhere.
 --debug                     display some more messages.
 --do-nothing                mostly do nothing. This option is not properly tested --> TODO.
 --help                      Display this help
---matching-apps             only restore matching apps. eg: --matching-apps "org.mozilla.firefox
---no-apk                    do not restore any apk.
---no-data                   do not restore data of app.
---no-ext-data               do not restore external data of app. eg: /data/media/0/Android/data/pkg.example
---no-keystore               do not restore keystores belonging to that app.
---no-perms                  do not restore set permissions of that app.
+--matching-apps             only restore matching apps. eg: --matching-apps "org.mozilla.firefox|org.videolan.vlc"
+--no-apk                    do not restore apk(s).
+--no-data                   do not restore data of app(s).
+--no-ext-data               do not restore external data of app(s). eg: /data/media/0/Android/data/pkg.example
+--no-keystore               do not restore keystore(s).
+--no-perms                  do not restore permissions of app(s).
+--only-apk                  do only restore apk(s).
+--only-data                 do only restore data of app(s).
+--only-ext-data             do only restore external data of app(s). eg: /data/media/0/Android/data/pkg.example
+--only-keystore             do only restore keystore(s).
+--only-perms                do only restore permissions of app(s).
 --single-app                only restore this single app. eg: --single-app org.videolan.vlc
 --update-tools              force updating tools via git. At the moment tar and busybox
 --list-apps-only            list apps only that might be restore
