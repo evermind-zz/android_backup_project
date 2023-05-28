@@ -518,3 +518,25 @@ function getDateForMilliSecondsSince1970() {
     local millis=$((16#$1))
     LC_ALL=C date -Iseconds --date=@$(($millis/1000))
 }
+
+function _doesFileOrDirExists() {
+    local testOpt="$1"
+    local path="$2"
+    local opt
+    if $AS $BUSYBOX test $testOpt \"$path\" ; then
+        return 0
+    fi
+    return 1
+}
+
+function doesFileOrDirExists() {
+    local path="$1"
+    _doesFileOrDirExists "-e" "$path"
+    return $?
+}
+
+function doesDirExists() {
+    local path="$1"
+    _doesFileOrDirExists "-d" "$path"
+    return $?
+}

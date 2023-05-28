@@ -99,6 +99,7 @@ restore_apps.sh is a script to restore apks, data, external data, keystores, per
 --update-tools              force updating tools via git. At the moment tar and busybox
 --list-apps-only            list apps only that might be restore
 --no-precaution             Do not force user to confirm that he might overwrite files on the device
+--behaviour-delete-app-data   Do not use 'pm clear' as it also deletes ext data. Use rm -rf to delete app data
 
 some examples:
 ==========

@@ -91,6 +91,9 @@ function optionHelp()
         --no-precaution)
             echo "Do not force user to confirm that he might overwrite files on the device"
             ;;
+        --behaviour-delete-app-data)
+            echo "Do not use 'pm clear' as it also deletes ext data. Use rm -rf to delete app data"
+            ;;
         *)
             echo "Unrecognized option $option"
             exit 1
