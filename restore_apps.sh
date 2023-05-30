@@ -326,8 +326,9 @@ function restoreExtraData()
                 cat "$extraDataPackage" | decryptIfNeeded | decompressor | pv -trab | $AS "$TAR -xpf - -C "$extraDataPath""
 IFS="
 "
-                createExtDataPermUpdateScript "$extraDataPath" "$oldGid" "$newGid" | eval $AS "$BUSYBOX tee "$fix_extra_perms_script""
+                createExtDataPermUpdateScript "$extraDataPath" "$oldGid" "$newGid" | grep -v "$fix_extra_perms_script" | eval $AS "$BUSYBOX tee "$fix_extra_perms_script""
                 IFS="$OLDIFS"
+                einfo "[$appSign]: run generated script to fix ownership of app extra data"
                 $AS "$BUSYBOX sh "$fix_extra_perms_script""
                 $AS "$BUSYBOX rm "$fix_extra_perms_script""
             fi
@@ -549,8 +550,9 @@ for appSign in $APPS; do
                     fix_perms_script=$appDataDir/${dataDir}_fix_permissions_0234fo3.sh
 IFS="
 "
-                    createDataPermUpdateScript "$appDataDir" "$oldGid" "$newGid" "$oldUid" "$newUid" | eval $AS "$BUSYBOX tee "$fix_perms_script""
+                    createDataPermUpdateScript "$appDataDir" "$oldGid" "$newGid" "$oldUid" "$newUid" | grep -v "$fix_perms_script" | eval $AS "$BUSYBOX tee "$fix_perms_script""
                     IFS="$OLDIFS"
+                    einfo "[$appSign]: run generated script to fix ownership of app data"
                     $AS "$BUSYBOX sh "$fix_perms_script""
                     $AS "$BUSYBOX rm "$fix_perms_script""
 
