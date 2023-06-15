@@ -10,23 +10,52 @@ alias shiftArgs='for ((i=0;i < FNC_RETURN_VAL;i++)) ; do shift ; done ; let argC
 
 function printHelp() {
     local input="`egrep -o -- '--.*]].*;.*#.*' $0`"
-    local inputCopy="$input"
 
-    # find longest argument to get the output nice
-    local longest=0
-    while [[ "$input" =~ (--[a-zA-Z0-9-]*)\"\ *]][^#]*#\ *([^#]*)#(.*) ]] ; do
-        if [ ${#BASH_REMATCH[1]} -gt $longest ] ; then
-            longest=${#BASH_REMATCH[1]}
+    #### internal helper functions -- start
+    function __determineLongest() {
+        local option="$1"
+        if [ ${#option} -gt $longest ] ; then
+            longest=${#option}
         fi
-        input=${BASH_REMATCH[3]}
-    done
+    }
+
+    function __printOptionAndText() {
+        local option="$1"
+        local text="$2"
+        printf " %-${longest}s %s\n" "${option}" "${text}"
+    }
+
+    local reAllOptions='(--[a-zA-Z0-9-]*)\"\ *]][^#]*#\ *([^#]*)#(.*)'
+    local reArgAndHelp='>>(.*)<<\ (.*)'
+    function __processHelpOptions() {
+        local input="$1"
+        local methodPointer="$2"
+        while [[ "$input" =~ $reAllOptions ]] ; do
+            local option=${BASH_REMATCH[1]}
+            local text=${BASH_REMATCH[2]}
+            local remaining=${BASH_REMATCH[3]}
+
+            # check if option has arg specified in $text
+            if [[ "$text" =~ $reArgAndHelp ]] ; then
+                arg=${BASH_REMATCH[1]}
+                text=${BASH_REMATCH[2]}
+                option+=" $arg"
+            fi
+
+            $methodPointer "$option" "$text"
+            input="${remaining}"
+        done
+    }
+    #### internal helper functions -- end
+
+    # find longest option to get the output nice
+    local longest=0
+    __processHelpOptions "$input" "__determineLongest"
+    let longest+=1 # more space(s)
 
     # print the help
-    let longest+=5 # spaces more
-    while [[ "$inputCopy" =~ (--[a-zA-Z0-9-]*)\"\ *]][^#]*#\ *([^#]*)#(.*) ]] ; do
-        printf "%-${longest}s %s\n" "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
-        inputCopy=${BASH_REMATCH[3]}
-    done
+    echo -e "Usage: ` basename $0` [OPTION]... [FILE(S)]...\n"
+    __processHelpOptions "$input" "__printOptionAndText"
     exit 0
 }
 
@@ -102,27 +131,27 @@ while [ $argCount -gt 0 ] ; do
     elif [[ "$1" == "--list" ]]; then # list apk(s) you specified with --apk-*#
         shift; let argCount-=1
         DO_LIST=true
-    elif [[ "$1" == "--apk-files" ]]; then # apk(s) that are complete app(s)#
+    elif [[ "$1" == "--apk-files" ]]; then # >>APK1 APK2 ...<< apk(s) that are complete app(s)#
         shift; let argCount-=1
         readApksIntoSpitApk2DimArray false $@
         shiftArgs
-    elif [[ "$1" == "--apk-files-split" ]]; then # apk paths for a split app#
+    elif [[ "$1" == "--apk-files-split" ]]; then # >>APK1 APK2 ...<< apk paths for a split app#
         shift; let argCount-=1
         readApksIntoSpitApk2DimArray true $@
         shiftArgs
-    elif [[ "$1" == "--apk-dir" ]] ; then # the path to the dir with (none split) apk(s) for app(s)#
+    elif [[ "$1" == "--apk-dir" ]] ; then # >>DIR<< the directory with (none split) apk(s) for app(s)#
         shift; let argCount-=1
         readApkFromDir false "$1"
         shift; let argCount-=1
-    elif [[ "$1" == "--apk-dir-split" ]] ; then # the path to the dir with (split) apks for single app#
+    elif [[ "$1" == "--apk-dir-split" ]] ; then # >>DIR<< the directory with (split) apks for single app#
         shift; let argCount-=1
         readApkFromDir true "$1"
         shift; let argCount-=1
-    elif [[ "$1" == "--installer-name" ]] ; then # the name of the installer to state: eg "com.android.vending" #
+    elif [[ "$1" == "--installer-name" ]] ; then #  >>NAME<< the installer signature to use: eg "com.android.vending"#
         shift; let argCount-=1
         INSTALLER_NAME=$1
         shift; let argCount-=1
-    elif [[ "$1" == "--help" ]]; then # show this help #
+    elif [[ "$1" == "--help" ]]; then # show this help#
         shift; let argCount-=1
         printHelp
     else
