@@ -109,3 +109,19 @@ bash restore_apps.sh --single-app "org.videolan.vlc"
 # restore only apks to device:
 bash  restore_apps.sh --backup-dir myBackupDir --no-keystore --no-data --no-ext-data --no-perms
 ```
+
+## app-installer.sh commandline --switches
+This script is just a wrapper to help install apks onto your device. But maybe you prefer using adb directly.
+```
+$ bash app-installer.sh --help
+Usage: app-installer.sh [OPTION]... [FILE(S)]...
+
+ --install                        install apk(s) you specified with --apk-*
+ --list                           list apk(s) you specified with --apk-*
+ --apk-files APK1 APK2 ...        apk(s) that are complete app(s)
+ --apk-files-split APK1 APK2 ...  apk paths for a split app
+ --apk-dir DIR                    the directory with (none split) apk(s) for app(s)
+ --apk-dir-split DIR              the directory with (split) apks for single app
+ --installer-name NAME            the installer signature to use: eg "com.android.vending"
+ --help                           show this help
+```

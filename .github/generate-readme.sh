@@ -46,3 +46,10 @@ echol '```'
 echol '$ bash restore_apps.sh --help'
 echol "`bash restore_apps.sh --help`"
 echol '```'
+echol ""
+echol '## app-installer.sh commandline --switches'
+echol "This script is just a wrapper to help install apks onto your device. But maybe you prefer using adb directly."
+echol '```'
+echol "$ bash app-installer.sh --help"
+echol "`bash app-installer.sh --help`"
+echol '```'
