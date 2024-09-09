@@ -361,8 +361,10 @@ for APP in $APPS; do
         dataDir=`echo $APP | sed 's/package://' | rev | cut -d "=" -f1 | rev`
 
         # stop app process(es) for backup
-        preBackupActions "$dataDir"
-        stoppedPids="$FNC_RETURN"
+        if ! $DO_LIST_APPS_ONLY ; then
+            preBackupActions "$dataDir"
+            stoppedPids="$FNC_RETURN"
+        fi
     fi
 
     if $DO_LIST_APPS_ONLY ; then
