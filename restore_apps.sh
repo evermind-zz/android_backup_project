@@ -329,7 +329,7 @@ IFS="
                 createExtDataPermUpdateScript "$extraDataPath" "$oldGid" "$newGid" | grep -v "$fix_extra_perms_script" | eval $AS "$BUSYBOX tee "$fix_extra_perms_script""
                 IFS="$OLDIFS"
                 einfo "[$appSign]: run generated script to fix ownership of app extra data"
-                $AS "$BUSYBOX sh "$fix_extra_perms_script""
+                $AS "$BUSYBOX chown -F "$fix_extra_perms_script""
                 $AS "$BUSYBOX rm "$fix_extra_perms_script""
             fi
         else
@@ -553,7 +553,7 @@ IFS="
                     createDataPermUpdateScript "$appDataDir" "$oldGid" "$newGid" "$oldUid" "$newUid" | grep -v "$fix_perms_script" | eval $AS "$BUSYBOX tee "$fix_perms_script""
                     IFS="$OLDIFS"
                     einfo "[$appSign]: run generated script to fix ownership of app data"
-                    $AS "$BUSYBOX sh "$fix_perms_script""
+                    $AS "$BUSYBOX chown -F "$fix_perms_script""
                     $AS "$BUSYBOX rm "$fix_perms_script""
 
                     # fix selinux context

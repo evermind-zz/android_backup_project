@@ -316,6 +316,37 @@ function determineArch()
         echo $target_arch
 }
 
+# maps to binary folder structure in https://github.com/evermind-zz/busybox-android-binaries
+function archToBusyboxBinaryDirLocation()
+{
+	einfo2 "Determining suitable busybox binary..."
+	local target_arch="$1"
+	local subdir=""
+	case $target_arch in
+		arm64)
+			subdir="arm64-v8a"
+			;;
+		arm)
+			subdir="armeabi-v7a"
+			;;
+		mips|MIPS|mips32|arch-mips32|mips64|MIPS64|arch-mips64)
+			einfo2 "not supported architecture $target_arch"
+			exit 1
+			;;
+		x86|x86_32|IA32|ia32|intel32|i386|i486|i586|i686|intel)
+			subdir="x86"
+			;;
+		x86_64|x64|amd64|AMD64|amd)
+			subdir=x86_64
+			;;
+		*)
+			einfo2 "Unrecognized architecture $target_arch"
+			exit 1
+			;;
+	esac
+	echo $subdir
+}
+
 function pushBinary() {
         local binaryName="$1"
         local srcBinary="$2"
@@ -351,8 +382,9 @@ function pushBusybox()
         local selinuxPostfix=""
         [ "a${useSelinuxVersion}b" != "ab" ] && selinuxPostfix="-selinux"
         local target_arch="$(determineArch)"
+        local busybox_arch_dir="$(archToBusyboxBinaryDirLocation "$target_arch")"
 	echo "Pushing busybox to device..."
-	pushBinary "Busybox" "busybox-ndk/busybox-${target_arch}${selinuxPostfix}" "$BUSYBOX" "--help"
+	pushBinary "Busybox" "busybox-android-binaries/${busybox_arch_dir}/busybox" "$BUSYBOX" "--help"
 }
 
 function stopRuntime()
@@ -384,10 +416,10 @@ function updateTarBinary()
 function updateBusybox()
 {
     local doForceUpdate=${1:-false}
-    if [ ! -d busybox-ndk ]; then
-        git clone https://github.com/Magisk-Modules-Repo/busybox-ndk
+    if [ ! -d busybox-android-binaries ]; then
+        git clone https://github.com/evermind-zz/busybox-android-binaries
     elif $doForceUpdate ; then
-        pushd busybox-ndk &> /dev/null
+        pushd busybox-android-binaries &> /dev/null
         git pull
         popd &> /dev/null
     fi
