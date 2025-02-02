@@ -572,3 +572,12 @@ function doesDirExists() {
     _doesFileOrDirExists "-d" "$path"
     return $?
 }
+
+function fail_on_error()
+{
+    $@
+    if [ $? != 0 ]; then
+        echo "we have a problem here!"
+        exit 1
+    fi
+}
